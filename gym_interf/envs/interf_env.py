@@ -23,18 +23,15 @@ class InterfEnv(gym.Env):
     c = 100
 
     def __init__(self):
-        self.mirror1_angle = np.array([135.1, 0, 0])
-        self.mirror2_angle = np.array([-45, 0, 0])
+        self.mirror1_angle = np.array([135, 0, 0], dtype=np.float64)
+        self.mirror2_angle = np.array([-45, 0, 0], dtype=np.float64)
 
         self.time = 1
+        self.image = None
 
     def step(self, action):
-        pass
+        self.mirror1_angle[0] += 0.1
 
-    def reset(self):
-        pass
-
-    def render(self, mode='human', close=False):
         mirror1_normal = np.array([0, 0, 1])
         mirror1_normal = rotate_euler_angles(mirror1_normal, self.mirror1_angle / 180 * pi)
 
@@ -60,13 +57,20 @@ class InterfEnv(gym.Env):
         print('reflect_with mirror2: center = {}, k = {}'.format(center2, wave_vector2))
 
         start = tm.time()
-        image = fast_calc_image(-5, 5, 200,
-                                wave_vector1, center1, InterfEnv.radius1,
-                                wave_vector2, center2, InterfEnv.radius2,
-                                self.time, InterfEnv.lamb, InterfEnv.omega,
-                                8)
+        self.image = fast_calc_image(
+            -5, 5, 200,
+            wave_vector1, center1, InterfEnv.radius1,
+            wave_vector2, center2, InterfEnv.radius2,
+            self.time, InterfEnv.lamb, InterfEnv.omega,
+            8)
         end = tm.time()
         print('image calculation time {} s'.format(end - start))
 
-        plt.imshow(image, vmin=0, vmax=4)
+    def reset(self):
+        pass
+
+    def render(self, mode='human', close=False):
+        plt.imshow(self.image, vmin=0, vmax=4)
+        plt.ion()
+        plt.pause(0.001)
         plt.show()
