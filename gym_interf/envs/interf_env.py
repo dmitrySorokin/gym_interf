@@ -10,9 +10,11 @@ from .utils import reflect, project, rotate_euler_angles, dist
 
 
 class InterfEnv(gym.Env):
+    n_points = 1024
+
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
-    observation_space = gym.spaces.Box(low=0, high=4, shape=(200, 200, 1), dtype=np.float64)
+    observation_space = gym.spaces.Box(low=0, high=4, shape=(n_points, n_points, 1), dtype=np.float64)
     action_space = gym.spaces.Discrete(9)
 
     lamb = 8 * 1e-4
@@ -30,9 +32,9 @@ class InterfEnv(gym.Env):
     mirror2_angle = np.array([-pi/4, 0, 0], dtype=np.float64)
 
     min_distance = 1e-2
-    max_distance = 8
+    max_distance = 10
 
-    delta_angle = pi / 1000
+    delta_angle = 1. / 1000
 
     def __init__(self):
         self.mirror1_angle = np.copy(InterfEnv.mirror1_angle)
@@ -177,7 +179,7 @@ class InterfEnv(gym.Env):
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
         start = tm.time()
         image = fast_calc_image(
-            -5, 5, 200,
+            -10, 10, InterfEnv.n_points,
             wave_vector1, center1, InterfEnv.radius1,
             wave_vector2, center2, InterfEnv.radius2,
             self.time, InterfEnv.lamb, InterfEnv.omega,
