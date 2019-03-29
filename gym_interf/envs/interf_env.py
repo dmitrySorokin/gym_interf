@@ -12,7 +12,7 @@ from .utils import reflect, project, rotate_euler_angles, dist
 class InterfEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
-    observation_space = gym.spaces.Box(low=0, high=4, shape=(200, 200, 1), dtype=np.float32)
+    observation_space = gym.spaces.Box(low=0, high=4, shape=(200, 200, 1), dtype=np.float64)
     action_space = gym.spaces.Discrete(9)
 
     lamb = 8 * 1e-4
