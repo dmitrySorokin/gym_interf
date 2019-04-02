@@ -1,3 +1,8 @@
+# ** TO BUILD (windows) **
+1. run cmake-gui and set 64 bit msvc compiler
+2. cmake CMakeCache.txt -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=TRUE 
+3. copy build/Release/interf.dll to libs/
+
 # ** TO INSTALL **
 pip3 install -e gym-interf
 

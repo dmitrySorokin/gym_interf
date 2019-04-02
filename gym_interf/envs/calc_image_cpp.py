@@ -1,9 +1,18 @@
 from ctypes import *
 import numpy as np
 import os
+import platform
+
 
 dirname = os.path.dirname(__file__)
-lib_path = os.path.join(dirname, 'cpp/install/libinterf.so')
+
+system = platform.system()
+if system == 'Windows':
+	lib_name = 'interf.dll'
+else:
+	lib_name = 'libinterf.so'
+
+lib_path = os.path.join(dirname, 'libs/' + lib_name)
 
 libc = cdll.LoadLibrary(lib_path)
 

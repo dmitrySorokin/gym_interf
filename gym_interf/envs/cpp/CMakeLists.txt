@@ -12,5 +12,5 @@ set_target_properties(interf PROPERTIES PUBLIC_HEADER include/interflib.h)
 target_include_directories(interf PRIVATE include)
 
 install(TARGETS interf
-    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
     PUBLIC_HEADER DESTINATION include)
