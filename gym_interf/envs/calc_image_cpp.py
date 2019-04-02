@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 dirname = os.path.dirname(__file__)
-lib_path = os.path.join(dirname, 'libs/libinterf.so')
+lib_path = os.path.join(dirname, 'cpp/install/libinterf.so')
 
 libc = cdll.LoadLibrary(lib_path)
 
@@ -33,4 +33,4 @@ def calc_image(
         n_threads, image
     )
 
-    return np.ctypeslib.as_array(image, shape=(n_points, n_points))
+    return np.ctypeslib.as_array(image, shape=(n_points, n_points)).reshape(1, n_points, n_points)
