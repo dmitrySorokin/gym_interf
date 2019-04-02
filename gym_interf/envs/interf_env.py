@@ -10,22 +10,25 @@ from .utils import reflect, project, rotate_euler_angles, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 1024
+    n_points = 64
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
-    observation_space = gym.spaces.Box(low=0, high=4, shape=(n_points, n_points, 1), dtype=np.float64)
+    observation_space = gym.spaces.Box(low=0, high=4, shape=(1, n_points, n_points), dtype=np.float64)
     action_space = gym.spaces.Discrete(9)
 
     lamb = 8 * 1e-4
     omega = 1
-    radius1 = 2.5
-    radius2 = 2.5
+    radius = 2.5
 
     # size of interferometer
     a = 100
     b = 200
     c = 100
+
+    # image min & max coords
+    x_min = -10
+    x_max = 10
 
     # initial angles
     mirror1_angle = np.array([3*pi/4, 0, 0], dtype=np.float64)
@@ -36,13 +39,13 @@ class InterfEnv(gym.Env):
 
     delta_angle = 1. / 1000
 
+    reset_actions = 100
+
     def __init__(self):
-        self.mirror1_angle = np.copy(InterfEnv.mirror1_angle)
-        self.mirror2_angle = np.copy(InterfEnv.mirror2_angle)
+        self.mirror1_angle = None
+        self.mirror2_angle = None
 
-        self.time = 1
-        self.image = None
-
+        self.state = None
         self.info = {}
 
     def get_keys_to_action(self):
@@ -64,29 +67,30 @@ class InterfEnv(gym.Env):
         :return: (state, reward, done, info)
         """
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
-        self.image = self._calc_state(center1, wave_vector1, center2, wave_vector2)
+        self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
         distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
-        reward = self._calc_reward(distance)
-        done = self._is_done(distance)
+        reward = self._calc_reward()
+        done = self._is_done(distance, reward)
 
-        return self.image, reward, done, self.info
+        return self.state, reward, done, self.info
 
     def reset(self):
         self.mirror1_angle = np.copy(InterfEnv.mirror1_angle)
         self.mirror2_angle = np.copy(InterfEnv.mirror2_angle)
 
-        self.time = 1
-        c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
-        self.image = self._calc_state(c1, k1, c2, k2)
+        for _ in range(InterfEnv.reset_actions):
+            self._take_action(self.action_space.sample())
+            c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
+        self.state = self._calc_state(c1, k1, c2, k2)
 
-        return self.image
+        return self.state
 
     def render(self, mode='human', close=False):
         if mode == 'rgb_array':
-            return self.image
+            return self.state
         elif mode == 'human':
-            plt.imshow(self.image, vmin=0, vmax=4)
+            plt.imshow(self.state[0], vmin=0, vmax=4)
             plt.ion()
             plt.pause(1)
             plt.show()
@@ -170,22 +174,50 @@ class InterfEnv(gym.Env):
 
         return distance
 
-    def _calc_reward(self, distance):
-        return 1 if distance < InterfEnv.min_distance else 0
+    def _calc_reward(self):
+        max_pixels = self.state.max(axis=0)
+        min_pixels = self.state.min(axis=0)
+        visib = (max_pixels - min_pixels) / (max_pixels + min_pixels)
 
-    def _is_done(self, distance):
-        return True if distance < InterfEnv.min_distance or distance > InterfEnv.max_distance else False
+        #center = int(InterfEnv.n_points / 2)
+        #radius_in_pixels = int(InterfEnv.radius * InterfEnv.n_points / (InterfEnv.x_max - InterfEnv.x_min))
+
+        #min_pixels = center - radius_in_pixels // 2
+        #max_pixels = center + radius_in_pixels // 2
+
+        #print(min_pixels, max_pixels)
+
+        #visib = visib[min_pixels: max_pixels, min_pixels: max_pixels]
+
+        #print('max_pixels', max_pixels.shape)
+        #print('min_pixels', min_pixels.shape)
+        #print('intens', visib[30:34, 30:34])
+        result = np.mean(visib)
+        return result
+
+    def _is_done(self, distance, visibility):
+        return distance > InterfEnv.max_distance or visibility == 1
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
-        start = tm.time()
-        image = fast_calc_image(
-            -10, 10, InterfEnv.n_points,
-            wave_vector1, center1, InterfEnv.radius1,
-            wave_vector2, center2, InterfEnv.radius2,
-            self.time, InterfEnv.lamb, InterfEnv.omega,
-            n_threads=8)
-        end = tm.time()
+        n_frames = 20
+        state = np.ndarray(shape=(n_frames, InterfEnv.n_points, InterfEnv.n_points), dtype=np.float64)
+        state_calc_time = 0
 
-        self.info['image_calc_time'] = end - start
+        for i, time in enumerate(np.linspace(0, 2 * pi, n_frames)):
+            start = tm.time()
 
-        return image
+            image = fast_calc_image(
+                InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
+                wave_vector1, center1, InterfEnv.radius,
+                wave_vector2, center2, InterfEnv.radius,
+                time, InterfEnv.lamb, InterfEnv.omega,
+                n_threads=8)
+            state[i] = image
+
+            end = tm.time()
+
+            state_calc_time += end - start
+
+        self.info['state_calc_time'] = state_calc_time
+
+        return state
