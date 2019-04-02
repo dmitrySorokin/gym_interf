@@ -4,13 +4,14 @@ from math import *
 from cmath import *
 import numpy as np
 import time as tm
+from scipy import optimize
 
 from .calc_image_cpp import calc_image as fast_calc_image
 from .utils import reflect, project, rotate_euler_angles, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 64
+    n_points = 128
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -37,9 +38,11 @@ class InterfEnv(gym.Env):
     min_distance = 1e-2
     max_distance = 10
 
-    delta_angle = 1. / 1000
+    delta_angle = pi / 100000
 
-    reset_actions = 100
+    reset_actions = 5000
+
+    n_frames = 20
 
     def __init__(self):
         self.mirror1_angle = None
@@ -81,7 +84,8 @@ class InterfEnv(gym.Env):
 
         for _ in range(InterfEnv.reset_actions):
             self._take_action(self.action_space.sample())
-            c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
+
+        c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state = self._calc_state(c1, k1, c2, k2)
 
         return self.state
@@ -175,36 +179,38 @@ class InterfEnv(gym.Env):
         return distance
 
     def _calc_reward(self):
-        max_pixels = self.state.max(axis=0)
-        min_pixels = self.state.min(axis=0)
-        visib = (max_pixels - min_pixels) / (max_pixels + min_pixels)
+        tot_intens = [np.sum(image) for image in self.state]
 
-        #center = int(InterfEnv.n_points / 2)
-        #radius_in_pixels = int(InterfEnv.radius * InterfEnv.n_points / (InterfEnv.x_max - InterfEnv.x_min))
+        def test_func(x, a, b, phi):
+            return a + b * np.cos(x + phi)
 
-        #min_pixels = center - radius_in_pixels // 2
-        #max_pixels = center + radius_in_pixels // 2
+        tstart = tm.time()
+        params, params_covariance = optimize.curve_fit(
+            test_func, np.linspace(0, 2 * pi, InterfEnv.n_frames),
+            tot_intens,
+            p0=[np.mean(tot_intens), 1, 0])
+        tend = tm.time()
 
-        #print(min_pixels, max_pixels)
+        self.info['fit_time'] = tend - tstart
 
-        #visib = visib[min_pixels: max_pixels, min_pixels: max_pixels]
+        fmax = params[0] + params[1]
+        fmin = params[0] - params[1]
 
-        #print('max_pixels', max_pixels.shape)
-        #print('min_pixels', min_pixels.shape)
-        #print('intens', visib[30:34, 30:34])
-        result = np.mean(visib)
-        return result
+        def visib(vmin, vmax):
+            return fabs((vmax - vmin) / (vmax + vmin))
+
+        #return (imax - imin) / (imax + imin)
+        return visib(fmin, fmax)
 
     def _is_done(self, distance, visibility):
         return distance > InterfEnv.max_distance or visibility == 1
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
-        n_frames = 20
-        state = np.ndarray(shape=(n_frames, InterfEnv.n_points, InterfEnv.n_points), dtype=np.float64)
+        state = np.ndarray(shape=(InterfEnv.n_frames, InterfEnv.n_points, InterfEnv.n_points), dtype=np.float64)
         state_calc_time = 0
 
-        for i, time in enumerate(np.linspace(0, 2 * pi, n_frames)):
-            start = tm.time()
+        for i, time in enumerate(np.linspace(0, 2 * pi, InterfEnv.n_frames)):
+            tstart = tm.time()
 
             image = fast_calc_image(
                 InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
@@ -214,9 +220,9 @@ class InterfEnv(gym.Env):
                 n_threads=8)
             state[i] = image
 
-            end = tm.time()
+            tend = tm.time()
 
-            state_calc_time += end - start
+            state_calc_time += tend - tstart
 
         self.info['state_calc_time'] = state_calc_time
 
