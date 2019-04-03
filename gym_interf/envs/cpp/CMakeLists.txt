@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE RELEASE)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-    add_definitions(BUILDING_FOR_WINDOWS _USE_MATH_DEFINES)
+    add_definitions(-DBUILDING_FOR_WINDOWS -D_USE_MATH_DEFINES)
 endif()
 
 add_library(interf SHARED src/utils.cpp src/interflib.cpp)

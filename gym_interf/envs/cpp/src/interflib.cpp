@@ -6,6 +6,7 @@
 #include <math.h>
 #include <future>
 
+
 namespace {
 
 struct Wave {
