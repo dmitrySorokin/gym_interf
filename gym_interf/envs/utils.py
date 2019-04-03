@@ -61,6 +61,14 @@ def rotate(vector, axis, angle):
     return np.dot(vector.T, matrix)
 
 
+def rotate_x(vector, angle):
+    return rotate(vector, [1, 0, 0], angle)
+
+
+def rotate_y(vector, angle):
+    return rotate(vector, [0, 1, 0], angle)
+
+
 def rotate_euler_angles(vector, angles):
     axis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
     for angle, ax in zip(angles, axis):
