@@ -4,17 +4,21 @@ import os
 import platform
 
 
-dirname = os.path.dirname(__file__)
+def lib_path():
+    dirname = os.path.dirname(__file__)
 
-system = platform.system()
-if system == 'Windows':
-	lib_name = 'interf.dll'
-else:
-	lib_name = 'libinterf.so'
+    system = platform.system()
+    if system == 'Windows':
+        lib_name = 'interf.dll'
+    elif system == 'Darwin':
+        lib_name = 'libinterf.dylib'
+    else:
+        lib_name = 'libinterf.so'
 
-lib_path = os.path.join(dirname, 'libs/' + lib_name)
+    return os.path.join(dirname, 'libs/' + lib_name)
 
-libc = cdll.LoadLibrary(lib_path)
+
+libc = cdll.LoadLibrary(lib_path())
 
 libc.calc_image.argtypes = [
     c_double, c_double, c_int,
