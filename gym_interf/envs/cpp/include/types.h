@@ -1,3 +1,5 @@
+#pragma onces
+
 #include <array>
 #include <complex>
 

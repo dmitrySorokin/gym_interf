@@ -1,3 +1,5 @@
+#pragma onces
+
 #include "types.h"
 
 namespace utils {
