@@ -11,8 +11,8 @@ from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 128
-    n_frames = 20
+    n_points = 64
+    n_frames = 16
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -39,16 +39,20 @@ class InterfEnv(gym.Env):
     min_distance = 1e-2
     max_distance = 10
 
-    delta_angle = pi / 100000
+    delta_angle = pi / 1000
 
-    reset_actions = 5000
+    reset_actions = 50
+    done_visibility = 0.7
+
+    max_steps = 2 * reset_actions
 
     def __init__(self):
         self.mirror1_normal = None
         self.mirror2_normal = None
 
         self.state = None
-        self.info = {}
+        self.n_steps = None
+        self.info = None
 
     def get_keys_to_action(self):
         return {
@@ -61,6 +65,9 @@ class InterfEnv(gym.Env):
             (ord('j'),): 7,
             (ord('l'),): 8
         }
+
+    def seed(self, seed=None):
+        self.action_space.seed(seed)
 
     def step(self, action):
         """
@@ -75,11 +82,16 @@ class InterfEnv(gym.Env):
         reward = self._calc_reward()
         done = self._is_done(distance, reward)
 
+        self.n_steps += 1
+
         return self.state, reward, done, self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
         self.mirror2_normal = np.copy(InterfEnv.mirror2_normal)
+
+        self.n_steps = 0
+        self.info = {}
 
         for _ in range(InterfEnv.reset_actions):
             self._take_action(self.action_space.sample())
@@ -197,7 +209,9 @@ class InterfEnv(gym.Env):
         return visib(fmin, fmax)
 
     def _is_done(self, distance, visibility):
-        return distance > InterfEnv.max_distance or 1 - visibility < 1e-5
+        return distance > InterfEnv.max_distance or \
+               visibility > InterfEnv.done_visibility or \
+               self.n_steps > InterfEnv.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
         state = np.ndarray(shape=(InterfEnv.n_frames, InterfEnv.n_points, InterfEnv.n_points), dtype=np.float64)
