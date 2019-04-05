@@ -22,10 +22,10 @@ libc = cdll.LoadLibrary(lib_path())
 
 libc.calc_image.argtypes = [
     c_double, c_double, c_int,
-    c_void_p, c_void_p, c_double,
-    c_void_p, c_void_p, c_double,
-    c_double, c_double, c_double,
-    c_int, c_void_p
+    POINTER(c_double), POINTER(c_double), c_double,
+    POINTER(c_double), POINTER(c_double), c_double,
+    c_int, c_double, c_double, c_bool,
+    c_int, POINTER(c_double)
 ]
 
 
@@ -33,17 +33,22 @@ def calc_image(
         start, end, n_points,
         wave_vector1, center1, radius1,
         wave_vector2, center2, radius2,
-        time, lamb, omega,
+        n_frames, lamb, omega, has_interf,
         n_threads):
 
-    image = (c_double * n_points * n_points)()
+    image = (c_double * (n_frames * n_points * n_points))()
+
+
+    def to_double_pointer(nparray):
+        return nparray.ctypes.data_as(POINTER(c_double))
 
     libc.calc_image(
         start, end, n_points,
-        c_void_p(wave_vector1.ctypes.data), c_void_p(center1.ctypes.data), radius1,
-        c_void_p(wave_vector2.ctypes.data), c_void_p(center2.ctypes.data), radius2,
-        time, lamb, omega,
+        to_double_pointer(wave_vector1), to_double_pointer(center1), radius1,
+        to_double_pointer(wave_vector2), to_double_pointer(center2), radius2,
+        n_frames, lamb, omega, has_interf,
         n_threads, image
     )
 
-    return np.ctypeslib.as_array(image, shape=(n_points, n_points)).reshape(1, n_points, n_points)
+    result =  np.ctypeslib.as_array(image)
+    return result.reshape(n_frames, n_points, n_points)

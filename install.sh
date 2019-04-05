@@ -4,11 +4,10 @@ cd gym_interf/envs/cpp/
 
 # clean-up cpp
 rm -rf build/*
-rm -rf install/*
 
 # compile & install cpp
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=../install ../
+cmake -DCMAKE_INSTALL_PREFIX=../../libs/ ../
 make install -j7
 
 # install pip package

@@ -11,7 +11,7 @@ from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 64
+    n_points = 256
     n_frames = 16
 
     metadata = {'render.modes': ['human', 'rgb_array']}
@@ -26,7 +26,7 @@ class InterfEnv(gym.Env):
     # size of interferometer
     a = 100
     b = 200
-    c = 100
+    c = 10000
 
     # image min & max coords
     x_min = -10
@@ -39,12 +39,12 @@ class InterfEnv(gym.Env):
     min_distance = 1e-2
     max_distance = 10
 
-    delta_angle = pi / 1000
+    delta_angle = pi / 100000
 
     reset_actions = 50
-    done_visibility = 0.7
+    done_visibility = 1
 
-    max_steps = 2 * reset_actions
+    max_steps = 200 * reset_actions
 
     def __init__(self):
         self.mirror1_normal = None
@@ -53,6 +53,7 @@ class InterfEnv(gym.Env):
         self.state = None
         self.n_steps = None
         self.info = None
+        self.visib = None
 
     def get_keys_to_action(self):
         return {
@@ -78,9 +79,9 @@ class InterfEnv(gym.Env):
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
         self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
-        distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        #distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
         reward = self._calc_reward()
-        done = self._is_done(distance, reward)
+        done = self._is_done()
 
         self.n_steps += 1
 
@@ -98,6 +99,9 @@ class InterfEnv(gym.Env):
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state = self._calc_state(c1, k1, c2, k2)
+
+        # should be called after self._calc_state()
+        self.visib = self._calc_visib()
 
         return self.state
 
@@ -185,52 +189,63 @@ class InterfEnv(gym.Env):
         return distance
 
     def _calc_reward(self):
+        prev_visib = self.visib
+        self.visib = self._calc_visib()
+        self.info['visib'] = self.visib
+        return self.visib - prev_visib
+
+    def _calc_visib(self):
         tot_intens = [np.sum(image) for image in self.state]
 
-        def test_func(x, a, b, phi):
+        def fit_func(x, a, b, phi):
             return a + b * np.cos(x + phi)
 
         tstart = tm.time()
         params, params_covariance = optimize.curve_fit(
-            test_func, np.linspace(0, 2 * pi, InterfEnv.n_frames),
+            fit_func, np.linspace(0, 2 * pi, InterfEnv.n_frames),
             tot_intens,
-            p0=[np.mean(tot_intens), 1, 0])
+            p0=[np.mean(tot_intens), np.std(tot_intens), 0])
         tend = tm.time()
 
         self.info['fit_time'] = tend - tstart
 
-        fmax = params[0] + params[1]
-        fmin = params[0] - params[1]
+        fmax = params[0] + fabs(params[1])
+        fmin = max(params[0] - fabs(params[1]), 0)
 
         def visib(vmin, vmax):
-            return fabs((vmax - vmin) / (vmax + vmin))
+            return (vmax - vmin) / (vmax + vmin)
 
         #return (imax - imin) / (imax + imin)
         return visib(fmin, fmax)
 
-    def _is_done(self, distance, visibility):
-        return distance > InterfEnv.max_distance or \
-               visibility > InterfEnv.done_visibility or \
+    def _is_done(self):
+        return self.visib > InterfEnv.done_visibility or \
                self.n_steps > InterfEnv.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
-        state = np.ndarray(shape=(InterfEnv.n_frames, InterfEnv.n_points, InterfEnv.n_points), dtype=np.float64)
         state_calc_time = 0
 
-        for i, time in enumerate(np.linspace(0, 2 * pi, InterfEnv.n_frames)):
-            tstart = tm.time()
+        tstart = tm.time()
 
-            image = fast_calc_image(
-                InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
-                wave_vector1, center1, InterfEnv.radius,
-                wave_vector2, center2, InterfEnv.radius,
-                time, InterfEnv.lamb, InterfEnv.omega,
-                n_threads=8)
-            state[i] = image
+        #band_width = InterfEnv.lamb * InterfEnv.c / dist(center1, center2)
+        #cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
+        #has_interf = band_width > cell_size
 
-            tend = tm.time()
+        #print('band_width = {}, cell_size = {}, interf = {}'.format(
+        #    band_width, cell_size, has_interf)
+        #)
 
-            state_calc_time += tend - tstart
+        state = fast_calc_image(
+            InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
+            wave_vector1, center1, InterfEnv.radius,
+            wave_vector2, center2, InterfEnv.radius,
+            InterfEnv.n_frames, InterfEnv.lamb, InterfEnv.omega,
+            has_interf=True,
+            n_threads=8)
+
+        tend = tm.time()
+
+        state_calc_time += tend - tstart
 
         self.info['state_calc_time'] = state_calc_time
 
