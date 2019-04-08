@@ -26,7 +26,7 @@ class InterfEnv(gym.Env):
     # size of interferometer
     a = 100
     b = 200
-    c = 10000
+    c = 100
 
     # image min & max coords
     x_min = -10
@@ -227,21 +227,23 @@ class InterfEnv(gym.Env):
 
         tstart = tm.time()
 
-        #band_width = InterfEnv.lamb * InterfEnv.c / dist(center1, center2)
-        #cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
-        #has_interf = band_width > cell_size
+        band_width_x = InterfEnv.lamb / abs(wave_vector2[0])
+        band_width_y = InterfEnv.lamb / abs(wave_vector2[1])
+        band_width = min(band_width_x, band_width_y)
+        cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
 
-        #print('band_width = {}, cell_size = {}, interf = {}'.format(
-        #    band_width, cell_size, has_interf)
-        #)
+        has_interf = band_width > 4 * cell_size
+
+        print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
+            band_width_x, band_width_y, cell_size, has_interf)
+        )
 
         state = fast_calc_image(
             InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
             wave_vector1, center1, InterfEnv.radius,
             wave_vector2, center2, InterfEnv.radius,
             InterfEnv.n_frames, InterfEnv.lamb, InterfEnv.omega,
-            has_interf=True,
-            n_threads=8)
+            has_interf=has_interf, n_threads=8)
 
         tend = tm.time()
 
