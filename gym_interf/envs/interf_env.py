@@ -16,7 +16,11 @@ class InterfEnv(gym.Env):
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
-    observation_space = gym.spaces.Discrete(6)
+
+    # DO I need this?
+    low = np.array([0,0,0,0,0,0])
+    observation_space = gym.spaces.Box(low=low, high=low)
+
     action_space = gym.spaces.Discrete(9)
 
     lamb = 8 * 1e-4
