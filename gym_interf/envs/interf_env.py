@@ -16,7 +16,7 @@ class InterfEnv(gym.Env):
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
-    observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
+    observation_space = gym.spaces.Discrete(6)
     action_space = gym.spaces.Discrete(9)
 
     lamb = 8 * 1e-4
@@ -85,7 +85,7 @@ class InterfEnv(gym.Env):
 
         self.n_steps += 1
 
-        return self.state, reward, done, self.info
+        return (*self.mirror1_normal, *self.mirror2_normal), reward, done, self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
@@ -103,7 +103,7 @@ class InterfEnv(gym.Env):
         # should be called after self._calc_state()
         self.visib = self._calc_visib()
 
-        return self.state
+        return (*self.mirror1_normal, *self.mirror2_normal)
 
     def render(self, mode='human', close=False):
         if mode == 'rgb_array':
