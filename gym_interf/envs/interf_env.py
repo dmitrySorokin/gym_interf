@@ -11,7 +11,7 @@ from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 256
+    n_points = 64
     n_frames = 16
 
     metadata = {'render.modes': ['human', 'rgb_array']}
@@ -26,7 +26,7 @@ class InterfEnv(gym.Env):
     # size of interferometer
     a = 100
     b = 200
-    c = 100
+    c = 10000
 
     # image min & max coords
     x_min = -10
@@ -42,9 +42,9 @@ class InterfEnv(gym.Env):
     delta_angle = pi / 100000
 
     reset_actions = 50
-    done_visibility = 1
+    done_visibility = 0.9999
 
-    max_steps = 200 * reset_actions
+    max_steps = 2 * reset_actions
 
     def __init__(self):
         self.mirror1_normal = None
@@ -234,9 +234,9 @@ class InterfEnv(gym.Env):
 
         has_interf = band_width > 4 * cell_size
 
-        print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
-            band_width_x, band_width_y, cell_size, has_interf)
-        )
+        #print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
+        #    band_width_x, band_width_y, cell_size, has_interf)
+        #)
 
         state = fast_calc_image(
             InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
