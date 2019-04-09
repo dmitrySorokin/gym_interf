@@ -18,7 +18,7 @@ class InterfEnv(gym.Env):
     reward_range = (0, 1)
 
     # DO I need this?
-    low = np.array([0,0,0,0,0,0])
+    low = np.array([0,0,0,0,0,0,0])
     observation_space = gym.spaces.Box(low=low, high=low)
 
     action_space = gym.spaces.Discrete(9)
@@ -89,7 +89,11 @@ class InterfEnv(gym.Env):
 
         self.n_steps += 1
 
-        return (*self.mirror1_normal, *self.mirror2_normal), reward, done, self.info
+        return (
+                   *self.mirror1_normal,
+                   *self.mirror2_normal,
+                   self.n_steps / InterfEnv.reset_actions
+               ), reward, done, self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
@@ -107,7 +111,11 @@ class InterfEnv(gym.Env):
         # should be called after self._calc_state()
         self.visib = self._calc_visib()
 
-        return (*self.mirror1_normal, *self.mirror2_normal)
+        return (
+            *self.mirror1_normal,
+            *self.mirror2_normal,
+            self.n_steps / InterfEnv.reset_actions
+        )
 
     def render(self, mode='human', close=False):
         if mode == 'rgb_array':
@@ -201,6 +209,11 @@ class InterfEnv(gym.Env):
     def _calc_visib(self):
         tot_intens = [np.sum(image) for image in self.state]
 
+        def visib(vmin, vmax):
+            return (vmax - vmin) / (vmax + vmin)
+
+        return visib(min(tot_intens), max(tot_intens))
+
         def fit_func(x, a, b, phi):
             return a + b * np.cos(x + phi)
 
@@ -216,8 +229,7 @@ class InterfEnv(gym.Env):
         fmax = params[0] + fabs(params[1])
         fmin = max(params[0] - fabs(params[1]), 0)
 
-        def visib(vmin, vmax):
-            return (vmax - vmin) / (vmax + vmin)
+
 
         #return (imax - imin) / (imax + imin)
         return visib(fmin, fmax)
