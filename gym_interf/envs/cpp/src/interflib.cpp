@@ -23,9 +23,14 @@ void calcImage(
 {
 	const double k = 2 * M_PI / lambda;
 
-    auto calcWave = [&](double z, double x, double y) {
+    auto calcWave1 = [&](double z, double x, double y) {
     	const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
     	return Wave{std::exp(-r2 / (radius1 * radius1)), z * k};
+    };
+
+    auto calcWave2 = [&](double z, double x, double y) {
+    	const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
+    	return Wave{std::exp(-r2 / (radius2 * radius2)), z * k};
     };
 
 
@@ -55,11 +60,11 @@ void calcImage(
 
 			const Vector source2 = utils::backTrack(point, wave_vector2, center2);
 	        const double dist2 = utils::dist(point, source2);
-	        auto w2 = calcWave(dist2, source2[0], source2[1]);
+	        auto w2 = calcWave2(dist2, source2[0], source2[1]);
 
 	        const Vector source1 = utils::backTrack(point, wave_vector1, center1);
 	        const double dist1 = utils::dist(point, source1);
-	        auto w1 = calcWave(dist1, source1[0], source1[1]);
+	        auto w1 = calcWave1(dist1, source1[0], source1[1]);
 
             ampl1[k] = w1.ampl;
             ampl2[k] = w2.ampl;

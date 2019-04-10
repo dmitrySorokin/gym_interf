@@ -21,16 +21,16 @@ class InterfEnv(gym.Env):
     low = np.array([0,0,0,0,0,0,0])
     observation_space = gym.spaces.Box(low=low, high=low)
 
-    action_space = gym.spaces.Discrete(9)
+    action_space = gym.spaces.Discrete(8)
 
     lamb = 8 * 1e-4
     omega = 1
-    radius = 2.5
+    radius = 1
 
     # size of interferometer
-    a = 100
+    a = 1000
     b = 200
-    c = 10000
+    c = 10
 
     # image min & max coords
     x_min = -10
@@ -39,9 +39,6 @@ class InterfEnv(gym.Env):
     # initial normals
     mirror1_normal = rotate_x(np.array([0, 0, 1]), 3 * pi / 4)
     mirror2_normal = rotate_x(np.array([0, 0, 1]), -pi / 4)
-
-    min_distance = 1e-2
-    max_distance = 10
 
     delta_angle = pi / 100000
 
@@ -61,14 +58,14 @@ class InterfEnv(gym.Env):
 
     def get_keys_to_action(self):
         return {
-            (ord('w'),): 1,
-            (ord('s'),): 2,
-            (ord('a'),): 3,
-            (ord('d'),): 4,
-            (ord('i'),): 5,
-            (ord('k'),): 6,
-            (ord('j'),): 7,
-            (ord('l'),): 8
+            (ord('w'),): 0,
+            (ord('s'),): 1,
+            (ord('a'),): 2,
+            (ord('d'),): 3,
+            (ord('i'),): 4,
+            (ord('k'),): 5,
+            (ord('j'),): 6,
+            (ord('l'),): 7
         }
 
     def seed(self, seed=None):
@@ -83,7 +80,7 @@ class InterfEnv(gym.Env):
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
         self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
-        #distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
         reward = self._calc_reward()
         done = self._is_done()
 
@@ -137,30 +134,24 @@ class InterfEnv(gym.Env):
         :return:
         """
 
-        assert action in range(9)
-
         if action == 0:
-            pass
-        elif action == 1:
             self.mirror1_normal = rotate_x(self.mirror1_normal, InterfEnv.delta_angle)
-        elif action == 2:
+        elif action == 1:
             self.mirror1_normal = rotate_x(self.mirror1_normal, -InterfEnv.delta_angle)
-        elif action == 3:
+        elif action == 2:
             self.mirror1_normal = rotate_y(self.mirror1_normal, InterfEnv.delta_angle)
-        elif action == 4:
+        elif action == 3:
             self.mirror1_normal = rotate_y(self.mirror1_normal, -InterfEnv.delta_angle)
-        elif action == 5:
+        elif action == 4:
             self.mirror2_normal = rotate_x(self.mirror2_normal, InterfEnv.delta_angle)
-        elif action == 6:
+        elif action == 5:
             self.mirror2_normal = rotate_x(self.mirror2_normal, -InterfEnv.delta_angle)
-        elif action == 7:
+        elif action == 6:
             self.mirror2_normal = rotate_y(self.mirror2_normal, InterfEnv.delta_angle)
-        elif action == 8:
+        elif action == 7:
             self.mirror2_normal = rotate_y(self.mirror2_normal, -InterfEnv.delta_angle)
         else:
-            assert False
-
-
+            assert False, 'unknown action = {}'.format(action)
 
         return self._calc_centers_and_wave_vectors()
 
