@@ -21,7 +21,7 @@ class InterfEnv(gym.Env):
     low = np.array([0,0,0,0,0,0,0])
     observation_space = gym.spaces.Box(low=low, high=low)
 
-    action_space = gym.spaces.Discrete(8)
+    action_space = gym.spaces.Discrete(2)
 
     lamb = 8 * 1e-4
     omega = 1
