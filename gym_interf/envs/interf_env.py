@@ -18,7 +18,7 @@ class InterfEnv(gym.Env):
     reward_range = (0, 1)
 
     # DO I need this?
-    low = np.array([0,0,0,0,0,0,0])
+    low = np.array([0, 0, 0, 0, 0, 0, 0])
     observation_space = gym.spaces.Box(low=low, high=low)
 
     action_space = gym.spaces.Discrete(2)
@@ -45,7 +45,7 @@ class InterfEnv(gym.Env):
     reset_actions = 50
     done_visibility = 0.9999
 
-    max_steps = 2 * reset_actions
+    max_steps = reset_actions
 
     def __init__(self):
         self.mirror1_normal = None
@@ -77,6 +77,9 @@ class InterfEnv(gym.Env):
         :param action: (mirror_name, axis, delta_angle)
         :return: (state, reward, done, info)
         """
+
+        self.n_steps += 1
+
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
         self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
@@ -84,13 +87,11 @@ class InterfEnv(gym.Env):
         reward = self._calc_reward()
         done = self._is_done()
 
-        self.n_steps += 1
-
-        return (
+        return np.array([
                    *self.mirror1_normal,
                    *self.mirror2_normal,
                    self.n_steps / InterfEnv.reset_actions
-               ), reward, done, self.info
+               ]), reward, done, self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
@@ -108,11 +109,11 @@ class InterfEnv(gym.Env):
         # should be called after self._calc_state()
         self.visib = self._calc_visib()
 
-        return (
+        return np.array([
             *self.mirror1_normal,
             *self.mirror2_normal,
             self.n_steps / InterfEnv.reset_actions
-        )
+        ])
 
     def render(self, mode='human', close=False):
         if mode == 'rgb_array':
@@ -192,10 +193,9 @@ class InterfEnv(gym.Env):
         return distance
 
     def _calc_reward(self):
-        prev_visib = self.visib
         self.visib = self._calc_visib()
         self.info['visib'] = self.visib
-        return self.visib - prev_visib
+        return self.visib - 1.
 
     def _calc_visib(self):
         tot_intens = [np.sum(image) for image in self.state]
@@ -227,7 +227,7 @@ class InterfEnv(gym.Env):
 
     def _is_done(self):
         return self.visib > InterfEnv.done_visibility or \
-               self.n_steps > InterfEnv.max_steps
+               self.n_steps >= InterfEnv.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
         state_calc_time = 0
