@@ -11,22 +11,23 @@ from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
 class InterfEnv(gym.Env):
-    n_points = 256
+    n_points = 64
     n_frames = 16
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
+
     observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
-    action_space = gym.spaces.Discrete(9)
+    action_space = gym.spaces.Discrete(8)
 
     lamb = 8 * 1e-4
     omega = 1
-    radius = 2.5
+    radius = 1
 
     # size of interferometer
-    a = 100
+    a = 1000
     b = 200
-    c = 100
+    c = 10
 
     # image min & max coords
     x_min = -10
@@ -36,15 +37,12 @@ class InterfEnv(gym.Env):
     mirror1_normal = rotate_x(np.array([0, 0, 1]), 3 * pi / 4)
     mirror2_normal = rotate_x(np.array([0, 0, 1]), -pi / 4)
 
-    min_distance = 1e-2
-    max_distance = 10
-
     delta_angle = pi / 100000
 
     reset_actions = 50
-    done_visibility = 1
+    done_visibility = 0.9999
 
-    max_steps = 200 * reset_actions
+    max_steps = reset_actions
 
     def __init__(self):
         self.mirror1_normal = None
@@ -57,14 +55,14 @@ class InterfEnv(gym.Env):
 
     def get_keys_to_action(self):
         return {
-            (ord('w'),): 1,
-            (ord('s'),): 2,
-            (ord('a'),): 3,
-            (ord('d'),): 4,
-            (ord('i'),): 5,
-            (ord('k'),): 6,
-            (ord('j'),): 7,
-            (ord('l'),): 8
+            (ord('w'),): 0,
+            (ord('s'),): 1,
+            (ord('a'),): 2,
+            (ord('d'),): 3,
+            (ord('i'),): 4,
+            (ord('k'),): 5,
+            (ord('j'),): 6,
+            (ord('l'),): 7
         }
 
     def seed(self, seed=None):
@@ -76,14 +74,15 @@ class InterfEnv(gym.Env):
         :param action: (mirror_name, axis, delta_angle)
         :return: (state, reward, done, info)
         """
+
+        self.n_steps += 1
+
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
         self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
-        #distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
         reward = self._calc_reward()
         done = self._is_done()
-
-        self.n_steps += 1
 
         return self.state, reward, done, self.info
 
@@ -125,30 +124,24 @@ class InterfEnv(gym.Env):
         :return:
         """
 
-        assert action in range(9)
-
         if action == 0:
-            pass
-        elif action == 1:
             self.mirror1_normal = rotate_x(self.mirror1_normal, InterfEnv.delta_angle)
-        elif action == 2:
+        elif action == 1:
             self.mirror1_normal = rotate_x(self.mirror1_normal, -InterfEnv.delta_angle)
-        elif action == 3:
+        elif action == 2:
             self.mirror1_normal = rotate_y(self.mirror1_normal, InterfEnv.delta_angle)
-        elif action == 4:
+        elif action == 3:
             self.mirror1_normal = rotate_y(self.mirror1_normal, -InterfEnv.delta_angle)
-        elif action == 5:
+        elif action == 4:
             self.mirror2_normal = rotate_x(self.mirror2_normal, InterfEnv.delta_angle)
-        elif action == 6:
+        elif action == 5:
             self.mirror2_normal = rotate_x(self.mirror2_normal, -InterfEnv.delta_angle)
-        elif action == 7:
+        elif action == 6:
             self.mirror2_normal = rotate_y(self.mirror2_normal, InterfEnv.delta_angle)
-        elif action == 8:
+        elif action == 7:
             self.mirror2_normal = rotate_y(self.mirror2_normal, -InterfEnv.delta_angle)
         else:
-            assert False
-
-
+            assert False, 'unknown action = {}'.format(action)
 
         return self._calc_centers_and_wave_vectors()
 
@@ -189,13 +182,17 @@ class InterfEnv(gym.Env):
         return distance
 
     def _calc_reward(self):
-        prev_visib = self.visib
         self.visib = self._calc_visib()
         self.info['visib'] = self.visib
-        return self.visib - prev_visib
+        return self.visib - 1.
 
     def _calc_visib(self):
         tot_intens = [np.sum(image) for image in self.state]
+
+        def visib(vmin, vmax):
+            return (vmax - vmin) / (vmax + vmin)
+
+        return visib(min(tot_intens), max(tot_intens))
 
         def fit_func(x, a, b, phi):
             return a + b * np.cos(x + phi)
@@ -212,15 +209,14 @@ class InterfEnv(gym.Env):
         fmax = params[0] + fabs(params[1])
         fmin = max(params[0] - fabs(params[1]), 0)
 
-        def visib(vmin, vmax):
-            return (vmax - vmin) / (vmax + vmin)
+
 
         #return (imax - imin) / (imax + imin)
         return visib(fmin, fmax)
 
     def _is_done(self):
         return self.visib > InterfEnv.done_visibility or \
-               self.n_steps > InterfEnv.max_steps
+               self.n_steps >= InterfEnv.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
         state_calc_time = 0
@@ -234,9 +230,9 @@ class InterfEnv(gym.Env):
 
         has_interf = band_width > 4 * cell_size
 
-        print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
-            band_width_x, band_width_y, cell_size, has_interf)
-        )
+        #print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
+        #    band_width_x, band_width_y, cell_size, has_interf)
+        #)
 
         state = fast_calc_image(
             InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,

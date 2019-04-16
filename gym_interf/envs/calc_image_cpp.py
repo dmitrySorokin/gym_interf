@@ -50,5 +50,5 @@ def calc_image(
         n_threads, image
     )
 
-    result =  np.ctypeslib.as_array(image)
+    result = np.ctypeslib.as_array(image)
     return result.reshape(n_frames, n_points, n_points)
