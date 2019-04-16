@@ -1,6 +1,5 @@
 .idea/
 __pycache__/
 gym_interf.egg-info
-gym_interf_img.egg-info
 build
 install
