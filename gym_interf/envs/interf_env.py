@@ -21,7 +21,7 @@ class InterfEnv(gym.Env):
     low = np.array([0, 0, 0, 0, 0, 0, 0])
     observation_space = gym.spaces.Box(low=low, high=low)
 
-    action_space = gym.spaces.Discrete(2)
+    action_space = gym.spaces.Discrete(8)
 
     lamb = 8 * 1e-4
     omega = 1
@@ -88,10 +88,10 @@ class InterfEnv(gym.Env):
         done = self._is_done()
 
         return np.array([
-                   *self.mirror1_normal,
-                   *self.mirror2_normal,
-                   self.n_steps / InterfEnv.reset_actions
-               ]), reward, done, self.info
+                *((self.mirror1_normal - InterfEnv.mirror1_normal) / InterfEnv.delta_angle),
+                *((self.mirror2_normal - InterfEnv.mirror2_normal) / InterfEnv.delta_angle),
+                self.n_steps / InterfEnv.reset_actions
+            ]), reward, done, self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
@@ -110,8 +110,8 @@ class InterfEnv(gym.Env):
         self.visib = self._calc_visib()
 
         return np.array([
-            *self.mirror1_normal,
-            *self.mirror2_normal,
+            *((self.mirror1_normal - InterfEnv.mirror1_normal) / InterfEnv.delta_angle),
+            *((self.mirror2_normal - InterfEnv.mirror2_normal) / InterfEnv.delta_angle),
             self.n_steps / InterfEnv.reset_actions
         ])
 
