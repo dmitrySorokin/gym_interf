@@ -82,9 +82,8 @@ class InterfEnv(gym.Env):
 
         distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
         reward = self._calc_reward()
-        done = self._is_done()
 
-        return self.state, reward, done, self.info
+        return self.state, reward, self.game_over(), self.info
 
     def reset(self):
         self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
@@ -214,7 +213,7 @@ class InterfEnv(gym.Env):
         #return (imax - imin) / (imax + imin)
         return visib(fmin, fmax)
 
-    def _is_done(self):
+    def game_over(self):
         return self.visib > InterfEnv.done_visibility or \
                self.n_steps >= InterfEnv.max_steps
 
