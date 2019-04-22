@@ -51,4 +51,4 @@ def calc_image(
     )
 
     result = np.ctypeslib.as_array(image)
-    return result.reshape(n_frames, n_points, n_points)
+    return result.reshape(n_frames, n_points, n_points).astype('float16')
