@@ -42,7 +42,7 @@ class InterfEnv(gym.Env):
     reset_actions = 50
     done_visibility = 0.9999
 
-    max_steps = reset_actions
+    max_steps = 4 * reset_actions
 
     def __init__(self):
         self.mirror1_normal = None

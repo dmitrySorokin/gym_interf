@@ -38,7 +38,6 @@ def calc_image(
 
     image = (c_double * (n_frames * n_points * n_points))()
 
-
     def to_double_pointer(nparray):
         return nparray.ctypes.data_as(POINTER(c_double))
 
