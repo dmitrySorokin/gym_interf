@@ -50,4 +50,9 @@ def calc_image(
     )
 
     result = np.ctypeslib.as_array(image)
-    return result.reshape(n_frames, n_points, n_points).astype('float16')
+    result = result.reshape(n_frames, n_points, n_points)
+
+    # to uint8
+    im_min, im_max = 0, 4
+    result = 255.0 * (result - im_min) / (im_max - im_min)
+    return result.astype('uint8')
