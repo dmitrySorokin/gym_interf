@@ -44,7 +44,7 @@ class InterfEnv(gym.Env):
 
     max_steps = 4 * reset_actions
 
-    def __init__(self, reward_calc='visib_minus_1'):
+    def __init__(self):
         self.mirror1_normal = None
         self.mirror2_normal = None
 
@@ -53,10 +53,13 @@ class InterfEnv(gym.Env):
         self.info = None
         self.visib = None
 
-        if reward_calc=='visib_minus_1':
-            self.calc_reward = self._calc_reward_visib_minus_1
-        elif reward_calc=='delta_visib':
-            self.calc_reward = self.calc_reward_delta_visib
+        self._calc_reward = self._calc_reward_visib_minus_1
+
+    def set_calc_reward(self, method):
+        if method == 'visib_minus_1':
+            self._calc_reward = self._calc_reward_visib_minus_1
+        elif method == 'delta_visib':
+            self._calc_reward = self._calc_reward_delta_visib
         else:
             assert 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(reward_calc)
 
@@ -192,7 +195,7 @@ class InterfEnv(gym.Env):
         self.info['visib'] = self.visib
         return self.visib - 1.
 
-    def calc_reward_delta_visib(self):
+    def _calc_reward_delta_visib(self):
         prev_visib = self.visib
         self.visib = self._calc_visib()
         self.info['visib'] = self.visib
