@@ -44,7 +44,7 @@ class InterfEnv(gym.Env):
 
     max_steps = 4 * reset_actions
 
-    def __init__(self):
+    def __init__(self, reward_calc='visib_minus_1'):
         self.mirror1_normal = None
         self.mirror2_normal = None
 
@@ -52,6 +52,13 @@ class InterfEnv(gym.Env):
         self.n_steps = None
         self.info = None
         self.visib = None
+
+        if reward_calc=='visib_minus_1':
+            self.calc_reward = self._calc_reward_visib_minus_1
+        elif reward_calc=='delta_visib':
+            self.calc_reward = self.calc_reward_delta_visib
+        else:
+            assert 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(reward_calc)
 
     def get_keys_to_action(self):
         return {
@@ -180,10 +187,16 @@ class InterfEnv(gym.Env):
 
         return distance
 
-    def _calc_reward(self):
+    def _calc_reward_visib_minus_1(self):
         self.visib = self._calc_visib()
         self.info['visib'] = self.visib
         return self.visib - 1.
+
+    def calc_reward_delta_visib(self):
+        prev_visib = self.visib
+        self.visib = self._calc_visib()
+        self.info['visib'] = self.visib
+        return self.visib - prev_visib
 
     def _calc_visib(self):
         tot_intens = [np.sum(image) for image in self.state]
