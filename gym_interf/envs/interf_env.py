@@ -6,7 +6,8 @@ import numpy as np
 import time as tm
 from scipy import optimize
 
-from .calc_image_cpp import calc_image as fast_calc_image
+from .calc_image_cpp import calc_image as calc_image_cpp
+from .calc_image_cuda import calc_image as calc_image_cuda
 from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
@@ -54,6 +55,7 @@ class InterfEnv(gym.Env):
         self.visib = None
 
         self._calc_reward = self._calc_reward_visib_minus_1
+        self._calc_image = calc_image_cpp
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -61,7 +63,15 @@ class InterfEnv(gym.Env):
         elif method == 'delta_visib':
             self._calc_reward = self._calc_reward_delta_visib
         else:
-            assert 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(reward_calc)
+            assert 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(method)
+
+    def set_calc_image(self, device):
+        if device == 'cpu':
+            self._calc_image = calc_image_cpp
+        elif device == 'gpu':
+            self._calc_image = calc_image_cuda
+        else:
+            assert 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
 
     def get_keys_to_action(self):
         return {
@@ -249,12 +259,12 @@ class InterfEnv(gym.Env):
         #    band_width_x, band_width_y, cell_size, has_interf)
         #)
 
-        state = fast_calc_image(
+        state = self._calc_image(
             InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
             wave_vector1, center1, InterfEnv.radius,
             wave_vector2, center2, InterfEnv.radius,
             InterfEnv.n_frames, InterfEnv.lamb, InterfEnv.omega,
-            has_interf=has_interf, n_threads=8)
+            has_interf=has_interf)
 
         tend = tm.time()
 

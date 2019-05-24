@@ -34,7 +34,7 @@ def calc_image(
         wave_vector1, center1, radius1,
         wave_vector2, center2, radius2,
         n_frames, lamb, omega, has_interf,
-        n_threads):
+        n_threads=8):
 
     image = (c_double * (n_frames * n_points * n_points))()
 
