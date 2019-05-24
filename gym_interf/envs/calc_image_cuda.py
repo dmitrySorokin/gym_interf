@@ -141,7 +141,6 @@ __global__ void calc_image(
 }
 """)
 
-impl = mod.get_function("calc_image")
 
 
 def calc_image(
@@ -157,6 +156,7 @@ def calc_image(
     result = np.zeros(shape=(n_frames * n_points * n_points), dtype=np.float64)
 
     pycuda.driver.init(flags=0)
+    impl = mod.get_function("calc_image")
 
     impl(
         np.float64(start), np.float64(end), np.int32(n_points),
