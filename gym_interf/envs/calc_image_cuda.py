@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from pycuda.compiler import SourceModule
 
+
 mod = SourceModule("""
 #include <cmath>
 #include <stdio.h>
@@ -142,6 +143,7 @@ __global__ void calc_image(
 }
 """)
 
+impl = mod.get_function("calc_image")
 
 
 def calc_image(
@@ -151,11 +153,10 @@ def calc_image(
         n_frames, lamb, omega, has_interf,
         block_size=64):  # number of threads per block
 
-    n = n_points ** 2
-    n_blocks = int(n / block_size)  # value determine by block size and total work
-
     result = torch.zeros(n_frames * n_points * n_points, dtype=torch.float64).cuda()
     gpu_array = GPUArray(result.shape, dtype=np.float64, gpudata=result.data_ptr())
+    n = n_points ** 2
+    n_blocks = int(n / block_size)  # value determine by block size and total work
 
     pycuda.driver.init(flags=0)
     impl = mod.get_function("calc_image")
@@ -165,7 +166,7 @@ def calc_image(
         drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
         drv.In(wave_vector2), drv.In(center2), np.float64(radius2),
         np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
-        drv.Out(result),
+        gpu_array,
         block=(block_size, 1, 1), grid=(n_blocks, 1))
 
     result = result.reshape(n_frames, n_points, n_points)
