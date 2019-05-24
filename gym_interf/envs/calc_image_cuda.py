@@ -158,9 +158,6 @@ def calc_image(
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
-    pycuda.driver.init(flags=0)
-    impl = mod.get_function("calc_image")
-
     impl(
         np.float64(start), np.float64(end), np.int32(n_points),
         drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
