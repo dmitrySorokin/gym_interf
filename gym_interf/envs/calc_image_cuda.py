@@ -156,6 +156,8 @@ def calc_image(
 
     result = np.zeros(shape=(n_frames * n_points * n_points), dtype=np.float64)
 
+    pycuda.driver.init(flags=0)
+
     impl(
         np.float64(start), np.float64(end), np.int32(n_points),
         drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
