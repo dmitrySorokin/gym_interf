@@ -1,7 +1,8 @@
 import pycuda.autoinit
 import pycuda.driver as drv
+from pycuda.gpuarray import GPUArray
 import numpy as np
-
+import torch
 from pycuda.compiler import SourceModule
 
 mod = SourceModule("""
@@ -153,7 +154,8 @@ def calc_image(
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
-    result = np.zeros(shape=(n_frames * n_points * n_points), dtype=np.float64)
+    result = torch.zeros(n_frames * n_points * n_points, dtype=torch.float64).cuda()
+    gpu_array = GPUArray(result.shape, dtype=np.float64, gpudata=result.data_ptr())
 
     pycuda.driver.init(flags=0)
     impl = mod.get_function("calc_image")
@@ -172,7 +174,7 @@ def calc_image(
     im_min, im_max = 0, 4
 
     result = 255.0 * (result - im_min) / (im_max - im_min)
-    result = result.astype('uint8')
+    result = result.type(torch.uint8)
 
     return result
 
