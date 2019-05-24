@@ -158,8 +158,8 @@ def calc_image(
 
     impl(
         np.float64(start), np.float64(end), np.int32(n_points),
-        drv.In(wave_vector1), drv.In(center1), radius1,
-        drv.In(wave_vector2), drv.In(center2), radius2,
+        drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
+        drv.In(wave_vector2), drv.In(center2), np.float64(radius2),
         np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
         drv.Out(result),
         block=(block_size, 1, 1), grid=(n_blocks, 1))

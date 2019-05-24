@@ -7,7 +7,6 @@ import time as tm
 from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
-from .calc_image_cuda import calc_image as calc_image_cuda
 from .utils import reflect, project, rotate_x, rotate_y, dist
 
 
@@ -69,6 +68,7 @@ class InterfEnv(gym.Env):
         if device == 'cpu':
             self._calc_image = calc_image_cpp
         elif device == 'gpu':
+            from .calc_image_cuda import calc_image as calc_image_cuda
             self._calc_image = calc_image_cuda
         else:
             assert 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
