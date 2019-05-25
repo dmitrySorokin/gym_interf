@@ -1,14 +1,13 @@
 import pycuda.autoinit
 import pycuda.driver as drv
 from pycuda.gpuarray import GPUArray
+from pycuda.compiler import SourceModule
 import numpy as np
 import torch
-from pycuda.compiler import SourceModule
 
 
 mod = SourceModule("""
 #include <cmath>
-#include <stdio.h>
 
 
 using Vector = double[3];
@@ -85,29 +84,29 @@ __device__ void calcImage(
     const int k = blockIdx.x * blockDim.x + threadIdx.x;  
 
     {
-    		int i = k / nPoints;
-			  int j = k - i * nPoints;
+        int i = k / nPoints;
+        int j = k - i * nPoints;
         const double step = (end - start) / nPoints;
-			  const Vector point = {start + i * step, start + j * step, 0};
+        const Vector point = {start + i * step, start + j * step, 0};
 
         Vector source2;
         {
             backTrack(point, wave_vector2, center2, source2);
         }
-	      const double dist2 = dist(point, source2);
-	      auto w2 = calcWave2(dist2, source2[0], source2[1]);
+        const double dist2 = dist(point, source2);
+        auto w2 = calcWave2(dist2, source2[0], source2[1]);
 
-	      Vector source1;
+        Vector source1;
         {
             backTrack(point, wave_vector1, center1, source1);
         }
-	      const double dist1 = dist(point, source1);
-	      auto w1 = calcWave1(dist1, source1[0], source1[1]);
+        const double dist1 = dist(point, source1);
+        auto w1 = calcWave1(dist1, source1[0], source1[1]);
 
         ampl1 = w1.ampl;
         ampl2 = w2.ampl;
         deltaPhase = w1.phase - w2.phase;
-		}
+	}
 
     const int totalPoints = nPoints * nPoints;
     for (int iFrame = 0; iFrame < nFrames; ++iFrame) {
@@ -165,6 +164,8 @@ def calc_image(
         np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
         gpu_array,
         block=(block_size, 1, 1), grid=(n_blocks, 1))
+
+    torch.cuda.synchronize()
 
     result = result.reshape(n_frames, n_points, n_points)
 
