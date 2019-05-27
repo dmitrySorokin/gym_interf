@@ -142,6 +142,8 @@ __global__ void calc_image(
 }
 """, keep=True)
 
+impl = mod.get_function("calc_image")
+
 
 def calc_image(
         start, end, n_points,
@@ -149,8 +151,6 @@ def calc_image(
         wave_vector2, center2, radius2,
         n_frames, lamb, omega, has_interf,
         block_size=64):  # number of threads per block
-
-    impl = mod.get_function("calc_image")
 
     result = np.zeros(n_frames * n_points * n_points, dtype=np.float64)
     n = n_points ** 2
