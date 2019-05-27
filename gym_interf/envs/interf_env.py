@@ -55,7 +55,6 @@ class InterfEnv(gym.Env):
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
-        self._sum = np.sum
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -68,12 +67,9 @@ class InterfEnv(gym.Env):
     def set_calc_image(self, device):
         if device == 'cpu':
             self._calc_image = calc_image_cpp
-            self._sum = np.sum
         elif device == 'gpu':
             from .calc_image_cuda import calc_image as calc_image_gpu
-            import torch
             self._calc_image = calc_image_gpu
-            self._sum = torch.sum
         else:
             assert 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
 
@@ -216,7 +212,7 @@ class InterfEnv(gym.Env):
         return self.visib - prev_visib
 
     def _calc_visib(self):
-        tot_intens = [self._sum(image) for image in self.state]
+        tot_intens = [np.sum(image) for image in self.state]
 
         def visib(vmin, vmax):
             return (vmax - vmin) / (vmax + vmin)

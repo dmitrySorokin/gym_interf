@@ -150,15 +150,9 @@ def calc_image(
         n_frames, lamb, omega, has_interf,
         block_size=64):  # number of threads per block
 
-    drv.init()  # init pycuda driver
-    current_dev = drv.Device(0)  # device we are working on
-    ctx = current_dev.make_context()  # make a working context
-    ctx.push()  # let context make the lead
-
     impl = mod.get_function("calc_image")
 
-    result = torch.zeros(n_frames * n_points * n_points, dtype=torch.float64).cuda()
-    gpu_array = GPUArray(result.shape, dtype=np.float64, gpudata=result.data_ptr())
+    result = np.zeros(n_frames * n_points * n_points, dtype=np.float64)
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
@@ -167,10 +161,8 @@ def calc_image(
         drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
         drv.In(wave_vector2), drv.In(center2), np.float64(radius2),
         np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
-        gpu_array,
+        drv.Out(result),
         block=(block_size, 1, 1), grid=(n_blocks, 1))
-
-    torch.cuda.synchronize()
 
     result = result.reshape(n_frames, n_points, n_points)
 
@@ -178,10 +170,7 @@ def calc_image(
     im_min, im_max = 0, 4
 
     result = 255.0 * (result - im_min) / (im_max - im_min)
-    result = result.type(torch.uint8)
-
-    ctx.pop()  # deactivate again
-    ctx.detach()  # delete it
+    result = result.astype(np.uint8)
 
     return result
 
