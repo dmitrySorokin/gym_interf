@@ -140,7 +140,7 @@ __global__ void calc_image(
       nFrames, lambda, omega, hasInterference,
       image);
 }
-""")
+""", keep=True)
 
 
 def calc_image(
