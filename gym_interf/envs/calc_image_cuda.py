@@ -141,8 +141,6 @@ __global__ void calc_image(
 }
 """)
 
-impl = mod.get_function("calc_image")
-
 
 def calc_image(
         start, end, n_points,
@@ -155,6 +153,8 @@ def calc_image(
     current_dev = drv.Device(0)  # device we are working on
     ctx = current_dev.make_context()  # make a working context
     ctx.push()  # let context make the lead
+
+    impl = mod.get_function("calc_image")
 
     result = torch.zeros(n_frames * n_points * n_points, dtype=torch.float64).cuda()
     gpu_array = GPUArray(result.shape, dtype=np.float64, gpudata=result.data_ptr())
