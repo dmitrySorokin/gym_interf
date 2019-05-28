@@ -152,6 +152,8 @@ def calc_image(
         n_frames, lamb, omega, has_interf,
         block_size=64):  # number of threads per block
 
+    print('calc_image_cuda')
+
     result = np.zeros(n_frames * n_points * n_points, dtype=np.float64)
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
