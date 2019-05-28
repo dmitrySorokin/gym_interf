@@ -36,8 +36,6 @@ def calc_image(
         n_frames, lamb, omega, has_interf,
         n_threads=8):
 
-    print('calc_image_cpp')
-
     image = (c_double * (n_frames * n_points * n_points))()
 
     def to_double_pointer(nparray):
