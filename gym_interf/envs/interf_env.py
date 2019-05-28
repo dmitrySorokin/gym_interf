@@ -62,7 +62,7 @@ class InterfEnv(gym.Env):
         elif method == 'delta_visib':
             self._calc_reward = self._calc_reward_delta_visib
         else:
-            assert 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(method)
+            assert False, 'unknown reward_calc == {} optnions are "visib_minus1", "delta_visib"'.format(method)
 
     def set_calc_image(self, device):
         if device == 'cpu':
@@ -71,7 +71,7 @@ class InterfEnv(gym.Env):
             from .calc_image_cuda import calc_image as calc_image_gpu
             self._calc_image = calc_image_gpu
         else:
-            assert 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
+            assert False, 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
 
     def get_keys_to_action(self):
         return {
