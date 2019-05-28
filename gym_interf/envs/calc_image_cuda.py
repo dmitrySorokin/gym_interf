@@ -5,7 +5,6 @@ from pycuda.compiler import SourceModule
 import numpy as np
 import torch
 
-
 mod = SourceModule("""
 #include <cmath>
 #include <cstdint>
@@ -50,12 +49,12 @@ __device__ struct Wave {
 
 __device__ void calcImage(
     float start, float end, int nPoints,
-    const Vector& wave_vector1, const Vector& center1, float radius1,
-    const Vector& wave_vector2, const Vector& center2, float radius2,
+    const Vector& wave_vector1, const Vector& center1, double radius1,
+    const Vector& wave_vector2, const Vector& center2, double radius2,
     int nFrames, float lambda, float omega, int hasInterference,
     uint8_t* image)
 {
-    const float kVector = 2 * M_PI / lambda;
+    const auto kVector = 2 * M_PI / lambda;
 
     auto calcWave1 = [&](float z, float x, float y) {
     	  const auto r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
@@ -90,7 +89,7 @@ __device__ void calcImage(
     {
         int i = k / nPoints;
         int j = k - i * nPoints;
-        const float step = (end - start) / nPoints;
+        const auto step = (end - start) / nPoints;
         const Vector point = {start + i * step, start + j * step, 0};
 
         Vector source2;
@@ -116,7 +115,7 @@ __device__ void calcImage(
     for (int iFrame = 0; iFrame < nFrames; ++iFrame) {
         float time = 2 * M_PI * iFrame / nFrames;
         int ind = iFrame * totalPoints;
-        auto* img = image + ind;
+        auto img = image + ind;
         img[k] = calcIntens(
             ampl1, 
             ampl2, 
@@ -126,10 +125,10 @@ __device__ void calcImage(
 }
 
 __global__ void calc_image(
-    float start, float end, int n_steps,
-    const float* vector1, const float*  cnt1, float radius1,
-    const float* vector2, const float*  cnt2, float radius2,
-    int nFrames, float lambda, float omega, int hasInterference,
+    double start, double end, int n_steps,
+    const double* vector1, const double*  cnt1, double radius1,
+    const double* vector2, const double*  cnt2, double radius2,
+    int nFrames, double lambda, double omega, int hasInterference,
     uint8_t* image)
 {
     Vector v1 = {vector1[0], vector1[1], vector1[2]};
@@ -146,8 +145,6 @@ __global__ void calc_image(
 }
 """)
 
-impl = mod.get_function("calc_image")
-
 
 def calc_image(
         start, end, n_points,
@@ -160,15 +157,23 @@ def calc_image(
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
+    impl = mod.get_function("calc_image")
+
     impl(
-        np.float32(start), np.float32(end), np.int32(n_points),
-        drv.In(wave_vector1), drv.In(center1), np.float32(radius1),
-        drv.In(wave_vector2), drv.In(center2), np.float32(radius2),
-        np.int32(n_frames), np.float32(lamb), np.float32(omega), np.int32(has_interf),
+        np.float64(start), np.float64(end), np.int32(n_points),
+        drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
+        drv.In(wave_vector2), drv.In(center2), np.float64(radius2),
+        np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
         drv.Out(result),
         block=(block_size, 1, 1), grid=(n_blocks, 1))
 
     result = result.reshape(n_frames, n_points, n_points)
+
+    # to uint8
+    # im_min, im_max = 0, 4
+
+    # result = 255.0 * (result - im_min) / (im_max - im_min)
+    # result = result.astype(np.uint8)
 
     return result
 
