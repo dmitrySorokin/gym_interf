@@ -25,7 +25,7 @@ libc.calc_image.argtypes = [
     POINTER(c_double), POINTER(c_double), c_double,
     POINTER(c_double), POINTER(c_double), c_double,
     c_int, c_double, c_double, c_bool,
-    c_int, POINTER(c_double)
+    c_int, POINTER(c_uint8)
 ]
 
 
@@ -36,7 +36,7 @@ def calc_image(
         n_frames, lamb, omega, has_interf,
         n_threads=8):
 
-    image = (c_double * (n_frames * n_points * n_points))()
+    image = (c_uint8 * (n_frames * n_points * n_points))()
 
     def to_double_pointer(nparray):
         return nparray.ctypes.data_as(POINTER(c_double))
@@ -52,7 +52,4 @@ def calc_image(
     result = np.ctypeslib.as_array(image)
     result = result.reshape(n_frames, n_points, n_points)
 
-    # to uint8
-    im_min, im_max = 0, 4
-    result = 255.0 * (result - im_min) / (im_max - im_min)
-    return result.astype('uint8')
+    return result

@@ -19,7 +19,7 @@ void calcImage(
 		const Vector& wave_vector1, const Vector& center1, double radius1,
         const Vector& wave_vector2, const Vector& center2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, double* image)
+        int nThreads, uint8_t* image)
 {
 	const double k = 2 * M_PI / lambda;
 
@@ -37,12 +37,15 @@ void calcImage(
     auto calcIntens = [&](double a1, double a2, double deltaPhi) {
         const auto i1 = a1 * a1;
         const auto i2 = a2 * a2;
+        double result = 0;
 
         if (hasInterference) {
-            return i1 + i2 + 2 * sqrt(i1 * i2) * cos(deltaPhi);
+            result = i1 + i2 + 2 * sqrt(i1 * i2) * cos(deltaPhi);
+        } else {
+            result = i1 + i2;
         }
 
-        return i1 + i2;
+        return static_cast<uint8_t>(255.0 * result / 4.0);
     };
 
     const int totalPoints = nPoints * nPoints;
@@ -86,7 +89,7 @@ void calcImage(
 		f.wait();
 	}
 
-    auto imageWorker = [&](double* img, double time) {
+    auto imageWorker = [&](uint8_t* img, double time) {
         for (int k = 0; k < totalPoints; ++k) {
             img[k] = calcIntens(
                 ampl1[k], 
@@ -100,7 +103,7 @@ void calcImage(
     for (int iFrame = 0; iFrame < nFrames; ++iFrame) {
         double time = 2 * M_PI * iFrame / nFrames;
         int ind = iFrame * totalPoints;
-        double* img = image + ind;
+        uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
             std::launch::async, imageWorker, img, time));
     }
@@ -119,7 +122,7 @@ void calc_image(
 		const double* vector1, const double*  cnt1, double radius1,
         const double* vector2, const double*  cnt2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, double* image)
+        int nThreads, uint8_t* image)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
 	auto wave_vector2 = Vector{vector2[0], vector2[1], vector2[2]};
