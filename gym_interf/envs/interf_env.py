@@ -7,7 +7,7 @@ import time as tm
 from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
-from .utils import reflect, project, rotate_x, rotate_y, dist
+from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
 
 
 class InterfEnv(gym.Env):
@@ -183,6 +183,8 @@ class InterfEnv(gym.Env):
         center2 = project(center2, wave_vector2, self.mirror2_normal, np.array([0, 0, -InterfEnv.c]))
         wave_vector2 = reflect(wave_vector2, self.mirror2_normal)
         self.info['reflect_with_mirror2'] = 'center = {}, k = {}'.format(center2, wave_vector2)
+
+        self.info['angle_between_beams'] = angle_between(wave_vector1, wave_vector2)
 
         return center1, wave_vector1, center2, wave_vector2
 
