@@ -30,8 +30,8 @@ class InterfEnv(gym.Env):
     c = 10
 
     # image min & max coords
-    x_min = -10
-    x_max = 10
+    x_min = -4
+    x_max = 4
 
     # initial normals
     mirror1_normal = rotate_x(np.array([0, 0, 1]), 3 * pi / 4)
@@ -98,10 +98,10 @@ class InterfEnv(gym.Env):
         self.n_steps += 1
 
         center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
-        self.state = self._calc_state(center1, wave_vector1, center2, wave_vector2)
+        self.state, tot_intens = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
         distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
-        reward = self._calc_reward()
+        reward = self._calc_reward(tot_intens)
 
         return self.state, reward, self.game_over(), self.info
 
@@ -116,10 +116,10 @@ class InterfEnv(gym.Env):
             self._take_action(self.action_space.sample())
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
-        self.state = self._calc_state(c1, k1, c2, k2)
+        self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
 
         # should be called after self._calc_state()
-        self.visib = self._calc_visib()
+        self.visib = self._calc_visib(tot_intens)
 
         return self.state
 
@@ -202,44 +202,50 @@ class InterfEnv(gym.Env):
 
         return distance
 
-    def _calc_reward_visib_minus_1(self):
-        self.visib = self._calc_visib()
+    def _calc_reward_visib_minus_1(self, tot_intens):
+        self.visib = self._calc_visib(tot_intens)
         self.info['visib'] = self.visib
         return self.visib - 1.
 
-    def _calc_reward_delta_visib(self):
+    def _calc_reward_delta_visib(self, tot_intens):
         prev_visib = self.visib
-        self.visib = self._calc_visib()
+        self.visib = self._calc_visib(tot_intens)
         self.info['visib'] = self.visib
         return self.visib - prev_visib
 
-    def _calc_visib(self):
-        tot_intens = [np.sum(image) for image in self.state]
-
+    def _calc_visib(self, tot_intens):
         def visib(vmin, vmax):
             return (vmax - vmin) / (vmax + vmin)
+
+        imin, imax = min(tot_intens), max(tot_intens)
+        self.info['fit_time'] = 0
+        self.info['imin'] = imin
+        self.info['imax'] = imax
 
         return visib(float(min(tot_intens)), float(max(tot_intens)))
 
         def fit_func(x, a, b, phi):
             return a + b * np.cos(x + phi)
 
-        tstart = tm.time()
-        params, params_covariance = optimize.curve_fit(
-            fit_func, np.linspace(0, 2 * pi, InterfEnv.n_frames),
-            tot_intens,
-            p0=[np.mean(tot_intens), np.std(tot_intens), 0])
-        tend = tm.time()
+        try:
+            tstart = tm.time()
+            params, params_covariance = optimize.curve_fit(
+                fit_func, np.linspace(0, 2 * pi, InterfEnv.n_frames),
+                tot_intens,
+                p0=[np.mean(tot_intens), np.max(tot_intens) - np.mean(tot_intens), 0])
+            tend = tm.time()
 
-        self.info['fit_time'] = tend - tstart
+            self.info['fit_time'] = tend - tstart
 
-        fmax = params[0] + fabs(params[1])
-        fmin = max(params[0] - fabs(params[1]), 0)
+            a_param = params[0]
+            b_param = abs(params[1])
 
+            fmax = a_param + b_param
+            fmin = max(a_param - b_param, 0)
 
-
-        #return (imax - imin) / (imax + imin)
-        return visib(fmin, fmax)
+            return visib(fmin, fmax)
+        except RuntimeError:
+            return visib(float(min(tot_intens)), float(max(tot_intens)))
 
     def game_over(self):
         return self.visib > InterfEnv.done_visibility or \

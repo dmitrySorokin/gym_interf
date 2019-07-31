@@ -25,7 +25,7 @@ libc.calc_image.argtypes = [
     POINTER(c_double), POINTER(c_double), c_double,
     POINTER(c_double), POINTER(c_double), c_double,
     c_int, c_double, c_double, c_bool,
-    c_int, POINTER(c_uint8)
+    c_int, POINTER(c_uint8), POINTER(c_double)
 ]
 
 
@@ -37,6 +37,7 @@ def calc_image(
         n_threads=8):
 
     image = (c_uint8 * (n_frames * n_points * n_points))()
+    total_intens = (c_double * n_frames)()
 
     def to_double_pointer(nparray):
         return nparray.ctypes.data_as(POINTER(c_double))
@@ -46,10 +47,11 @@ def calc_image(
         to_double_pointer(wave_vector1), to_double_pointer(center1), radius1,
         to_double_pointer(wave_vector2), to_double_pointer(center2), radius2,
         n_frames, lamb, omega, has_interf,
-        n_threads, image
+        n_threads, image, total_intens
     )
 
     result = np.ctypeslib.as_array(image)
     result = result.reshape(n_frames, n_points, n_points)
+    total_intens = np.ctypeslib.as_array(total_intens)
 
-    return result
+    return result, total_intens

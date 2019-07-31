@@ -6,6 +6,9 @@
 #include <math.h>
 #include <future>
 
+#include <iostream>
+#include <algorithm>
+
 
 namespace {
 
@@ -19,18 +22,20 @@ void calcImage(
 		const Vector& wave_vector1, const Vector& center1, double radius1,
         const Vector& wave_vector2, const Vector& center2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, uint8_t* image)
+        int nThreads, uint8_t* image, double* totIntens)
 {
 	const double k = 2 * M_PI / lambda;
 
     auto calcWave1 = [&](double z, double x, double y) {
     	const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
     	return Wave{std::exp(-r2 / (radius1 * radius1)), z * k};
+    	//return Wave{1.0 * (r2 <= radius1 * radius1), z * k};
     };
 
     auto calcWave2 = [&](double z, double x, double y) {
     	const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
     	return Wave{std::exp(-r2 / (radius2 * radius2)), z * k};
+    	//return Wave{1.0 * (r2 <= radius2 * radius2), z * k};
     };
 
 
@@ -45,7 +50,7 @@ void calcImage(
             result = i1 + i2;
         }
 
-        return static_cast<uint8_t>(255.0 * result / 4.0);
+        return result;
     };
 
     const int totalPoints = nPoints * nPoints;
@@ -89,13 +94,16 @@ void calcImage(
 		f.wait();
 	}
 
-    auto imageWorker = [&](uint8_t* img, double time) {
+    auto imageWorker = [&](uint8_t* img, double time, double& integIntens) {
         for (int k = 0; k < totalPoints; ++k) {
-            img[k] = calcIntens(
+            const double intens = calcIntens(
                 ampl1[k], 
                 ampl2[k], 
                 deltaPhase[k] + omega * time
-            ); 
+            );
+
+            img[k] = static_cast<uint8_t>(255.0 * intens / 4.0);
+            integIntens += intens;
         }
     };
 
@@ -105,7 +113,8 @@ void calcImage(
         int ind = iFrame * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
-            std::launch::async, imageWorker, img, time));
+            std::launch::async, imageWorker, img, time,
+            std::ref(totIntens[iFrame])));
     }
 
     // wait for frames
@@ -122,7 +131,7 @@ void calc_image(
 		const double* vector1, const double*  cnt1, double radius1,
         const double* vector2, const double*  cnt2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, uint8_t* image)
+        int nThreads, uint8_t* image, double* totIntens)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
 	auto wave_vector2 = Vector{vector2[0], vector2[1], vector2[2]};
@@ -133,5 +142,5 @@ void calc_image(
 		wave_vector1, center1, radius1,
 		wave_vector2, center2, radius2,
 		nFrames, lambda, omega, hasInterference,
-		nThreads, image);
+		nThreads, image, totIntens);
 }
