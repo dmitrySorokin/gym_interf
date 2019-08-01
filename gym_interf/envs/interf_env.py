@@ -34,10 +34,11 @@ class InterfEnv(gym.Env):
     x_max = 4
 
     # initial normals
-    mirror1_normal = rotate_x(np.array([0, 0, 1]), 3 * pi / 4)
-    mirror2_normal = rotate_x(np.array([0, 0, 1]), -pi / 4)
+    mirror1_x_rotation_angle = 3 * pi / 4
+    mirror2_x_rotation_angle = -pi / 4
 
-    delta_angle = pi / 100000
+    # mirror screw step l / L, (ratio of delta screw length to vertical distance)
+    mirror_screw_step = pi / 100000
 
     reset_actions = 50
     done_visibility = 0.9999
@@ -45,8 +46,10 @@ class InterfEnv(gym.Env):
     max_steps = 4 * reset_actions
 
     def __init__(self):
-        self.mirror1_normal = None
-        self.mirror2_normal = None
+        self.mirror1_screw_x = 0
+        self.mirror1_screw_y = 0
+        self.mirror2_screw_x = 0
+        self.mirror2_screw_y = 0
 
         self.state = None
         self.n_steps = None
@@ -97,7 +100,8 @@ class InterfEnv(gym.Env):
 
         self.n_steps += 1
 
-        center1, wave_vector1, center2, wave_vector2 = self._take_action(action)
+        self._take_action(action, InterfEnv.mirror_screw_step)
+        center1, wave_vector1, center2, wave_vector2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
         distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
@@ -106,14 +110,17 @@ class InterfEnv(gym.Env):
         return self.state, reward, self.game_over(), self.info
 
     def reset(self):
-        self.mirror1_normal = np.copy(InterfEnv.mirror1_normal)
-        self.mirror2_normal = np.copy(InterfEnv.mirror2_normal)
-
         self.n_steps = 0
         self.info = {}
 
+        self.mirror1_screw_x = 0
+        self.mirror1_screw_y = 0
+        self.mirror2_screw_x = 0
+        self.mirror2_screw_y = 0
+
+        # fix me: use random step for every action
         for _ in range(InterfEnv.reset_actions):
-            self._take_action(self.action_space.sample())
+            self._take_action(self.action_space.sample(), InterfEnv.mirror_screw_step)
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
@@ -134,7 +141,7 @@ class InterfEnv(gym.Env):
         else:
             return None
 
-    def _take_action(self, action):
+    def _take_action(self, action, step_length):
         """
         0 - do nothing
         [1, 2, 3, 4] - mirror1
@@ -144,29 +151,45 @@ class InterfEnv(gym.Env):
         """
 
         if action == 0:
-            self.mirror1_normal = rotate_x(self.mirror1_normal, InterfEnv.delta_angle)
+            self.mirror1_screw_y -= step_length
         elif action == 1:
-            self.mirror1_normal = rotate_x(self.mirror1_normal, -InterfEnv.delta_angle)
+            self.mirror1_screw_y += step_length
         elif action == 2:
-            self.mirror1_normal = rotate_y(self.mirror1_normal, InterfEnv.delta_angle)
+            self.mirror1_screw_x -= step_length
         elif action == 3:
-            self.mirror1_normal = rotate_y(self.mirror1_normal, -InterfEnv.delta_angle)
+            self.mirror1_screw_x += step_length
         elif action == 4:
-            self.mirror2_normal = rotate_x(self.mirror2_normal, InterfEnv.delta_angle)
+            self.mirror2_screw_y -= step_length
         elif action == 5:
-            self.mirror2_normal = rotate_x(self.mirror2_normal, -InterfEnv.delta_angle)
+            self.mirror2_screw_y += step_length
         elif action == 6:
-            self.mirror2_normal = rotate_y(self.mirror2_normal, InterfEnv.delta_angle)
+            self.mirror2_screw_x += step_length
         elif action == 7:
-            self.mirror2_normal = rotate_y(self.mirror2_normal, -InterfEnv.delta_angle)
+            self.mirror2_screw_x -= step_length
         else:
             assert False, 'unknown action = {}'.format(action)
 
-        return self._calc_centers_and_wave_vectors()
-
     def _calc_centers_and_wave_vectors(self):
-        self.info['mirror1_normal'] = self.mirror1_normal
-        self.info['mirror2_normal'] = self.mirror2_normal
+        mirror1_x_component = - self.mirror1_screw_x / np.sqrt(self.mirror1_screw_x ** 2 + 1)
+        mirror1_y_component = - self.mirror1_screw_y / np.sqrt(self.mirror1_screw_y ** 2 + 1)
+        mirror1_z_component = np.sqrt(1 - mirror1_x_component ** 2 - mirror1_y_component ** 2)
+        mirror1_normal = np.array(
+            [mirror1_x_component, mirror1_y_component, mirror1_z_component],
+            dtype=np.float64
+        )
+        mirror1_normal = rotate_x(mirror1_normal, InterfEnv.mirror1_x_rotation_angle)
+
+        mirror2_x_component = - self.mirror2_screw_x / np.sqrt(self.mirror2_screw_x ** 2 + 1)
+        mirror2_y_component = - self.mirror2_screw_y / np.sqrt(self.mirror2_screw_y ** 2 + 1)
+        mirror2_z_component = np.sqrt(1 - mirror2_x_component ** 2 - mirror2_y_component ** 2)
+        mirror2_normal = np.array(
+            [mirror2_x_component, mirror2_y_component, mirror2_z_component],
+            dtype=np.float64
+        )
+        mirror2_normal = rotate_x(mirror2_normal, InterfEnv.mirror2_x_rotation_angle)
+
+        self.info['mirror1_normal'] = mirror1_normal
+        self.info['mirror2_normal'] = mirror2_normal
 
         wave_vector1 = np.array([0, 0, 1], dtype=np.float64)
         center1 = np.array([0, 0, -InterfEnv.c], dtype=np.float64)
@@ -175,13 +198,13 @@ class InterfEnv(gym.Env):
         wave_vector2 = np.array([0, 0, 1], dtype=np.float64)
 
         # reflect wave vector by first mirror
-        center2 = project(center2, wave_vector2, self.mirror1_normal, np.array([0, -InterfEnv.a, -InterfEnv.c]))
-        wave_vector2 = reflect(wave_vector2, self.mirror1_normal)
+        center2 = project(center2, wave_vector2, mirror1_normal, np.array([0, -InterfEnv.a, -InterfEnv.c]))
+        wave_vector2 = reflect(wave_vector2, mirror1_normal)
         self.info['reflect_with_mirror1'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
         # reflect wave vector by second mirror
-        center2 = project(center2, wave_vector2, self.mirror2_normal, np.array([0, 0, -InterfEnv.c]))
-        wave_vector2 = reflect(wave_vector2, self.mirror2_normal)
+        center2 = project(center2, wave_vector2, mirror2_normal, np.array([0, 0, -InterfEnv.c]))
+        wave_vector2 = reflect(wave_vector2, mirror2_normal)
         self.info['reflect_with_mirror2'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
         self.info['angle_between_beams'] = angle_between(wave_vector1, wave_vector2)
