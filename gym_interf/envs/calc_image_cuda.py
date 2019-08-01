@@ -10,11 +10,11 @@ mod = SourceModule("""
 #include <cstdint>
 
 
-using Vector = float[3];
+using Vector = double[3];
 
 __device__ auto dist(const Vector& vector1, const Vector& vector2)
 {
-    float result2;
+    double result2;
     for (int i = 0; i < 3; ++i) {
         result2 += (vector1[i] - vector2[i]) * (vector1[i] - vector2[i]);
     }
@@ -32,7 +32,7 @@ __device__ void backTrack(
     targetCenter[1] = target[1] - center[1];
     targetCenter[2] = target[2] - center[2];
 
-    const float dotScalar = 
+    const double dotScalar = 
         targetCenter[0] * normalVector[0] + 
         targetCenter[1] * normalVector[1] + 
         targetCenter[2] * normalVector[2];
@@ -43,33 +43,33 @@ __device__ void backTrack(
 }
 
 __device__ struct Wave {
-	float ampl;
-	float phase;
+    double ampl;
+    double phase;
 };
 
 __device__ void calcImage(
-    float start, float end, int nPoints,
+    double start, double end, int nPoints,
     const Vector& wave_vector1, const Vector& center1, double radius1,
     const Vector& wave_vector2, const Vector& center2, double radius2,
-    int nFrames, float lambda, float omega, int hasInterference,
-    uint8_t* image)
+    int nFrames, double lambda, double omega, int hasInterference,
+    uint8_t* image, double* totIntens)
 {
     const auto kVector = 2 * M_PI / lambda;
 
-    auto calcWave1 = [&](float z, float x, float y) {
-    	  const auto r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
-    	  return Wave{std::exp(-r2 / (radius1 * radius1)), z * kVector};
+    auto calcWave1 = [&](double z, double x, double y) {
+        const auto r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
+        return Wave{std::exp(-r2 / (radius1 * radius1)), z * kVector};
     };
 
-    auto calcWave2 = [&](float z, float x, float y) {
-    	  const auto r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
-    	  return Wave{std::exp(-r2 / (radius2 * radius2)), z * kVector};
+    auto calcWave2 = [&](double z, double x, double y) {
+        const auto r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
+        return Wave{std::exp(-r2 / (radius2 * radius2)), z * kVector};
     };
 
-    auto calcIntens = [&](float a1, float a2, float deltaPhi) {
+    auto calcIntens = [&](double a1, double a2, double deltaPhi) {
         const auto i1 = a1 * a1;
         const auto i2 = a2 * a2;
-        float result = 0;
+        double result = 0;
 
         if (hasInterference) {
             result = i1 + i2 + 2 * sqrt(i1 * i2) * cos(deltaPhi);
@@ -77,12 +77,13 @@ __device__ void calcImage(
             result = i1 + i2;
         }
 
-        return static_cast<uint8_t>(255.0 * result / 4.0);
+        return result;
+        //return static_cast<uint8_t>(255.0 * result / 4.0);
     };
 
-    float ampl1;
-    float ampl2;
-    float deltaPhase;
+    double ampl1;
+    double ampl2;
+    double deltaPhase;
 
     const int k = blockIdx.x * blockDim.x + threadIdx.x;  
 
@@ -109,18 +110,21 @@ __device__ void calcImage(
         ampl1 = w1.ampl;
         ampl2 = w2.ampl;
         deltaPhase = w1.phase - w2.phase;
-	}
+    }
 
     const int totalPoints = nPoints * nPoints;
     for (int iFrame = 0; iFrame < nFrames; ++iFrame) {
-        float time = 2 * M_PI * iFrame / nFrames;
+        double time = 2 * M_PI * iFrame / nFrames;
         int ind = iFrame * totalPoints;
         auto img = image + ind;
-        img[k] = calcIntens(
+        const double intens = calcIntens(
             ampl1, 
             ampl2, 
             deltaPhase + omega * time
         );
+        
+        atomicAdd(totIntens + iFrame, intens);
+        img[k] = static_cast<uint8_t>(intens * 255.0 / 4.0);
     }
 }
 
@@ -129,7 +133,7 @@ __global__ void calc_image(
     const double* vector1, const double*  cnt1, double radius1,
     const double* vector2, const double*  cnt2, double radius2,
     int nFrames, double lambda, double omega, int hasInterference,
-    uint8_t* image)
+    uint8_t* image, double* totIntens)
 {
     Vector v1 = {vector1[0], vector1[1], vector1[2]};
     Vector c1 = {cnt1[0], cnt1[1], cnt1[2]};
@@ -141,9 +145,9 @@ __global__ void calc_image(
       v1, c1, radius1,
       v2, c2, radius2,
       nFrames, lambda, omega, hasInterference,
-      image);
+      image, totIntens);
 }
-""")
+""", arch='sm_70')
 
 
 def calc_image(
@@ -154,6 +158,7 @@ def calc_image(
         block_size=64):  # number of threads per block
 
     result = np.zeros(n_frames * n_points * n_points, dtype=np.uint8)
+    tot_intens = np.zeros(n_frames, dtype=np.float64)
     n = n_points ** 2
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
@@ -164,7 +169,7 @@ def calc_image(
         drv.In(wave_vector1), drv.In(center1), np.float64(radius1),
         drv.In(wave_vector2), drv.In(center2), np.float64(radius2),
         np.int32(n_frames), np.float64(lamb), np.float64(omega), np.int32(has_interf),
-        drv.Out(result),
+        drv.Out(result), drv.Out(tot_intens),
         block=(block_size, 1, 1), grid=(n_blocks, 1))
 
     result = result.reshape(n_frames, n_points, n_points)
@@ -175,5 +180,5 @@ def calc_image(
     # result = 255.0 * (result - im_min) / (im_max - im_min)
     # result = result.astype(np.uint8)
 
-    return result
+    return result, tot_intens
 
