@@ -13,12 +13,17 @@ from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
 class InterfEnv(gym.Env):
     n_points = 64
     n_frames = 16
+    n_actions = 8
+
+    # mirror screw step l / L, (ratio of delta screw length to vertical distance)
+    mirror_screw_step = pi / 100000
+    max_mirror_screw_value = 50 * mirror_screw_step
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
 
     observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
-    action_space = gym.spaces.Discrete(8)
+    action_space = gym.spaces.Box(low=0, high=max_mirror_screw_value, shape=(n_actions,), dtype=np.float64)
 
     lamb = 8 * 1e-4
     omega = 1
@@ -37,13 +42,9 @@ class InterfEnv(gym.Env):
     mirror1_x_rotation_angle = 3 * pi / 4
     mirror2_x_rotation_angle = -pi / 4
 
-    # mirror screw step l / L, (ratio of delta screw length to vertical distance)
-    mirror_screw_step = pi / 100000
-
-    reset_actions = 50
     done_visibility = 0.9999
 
-    max_steps = 4 * reset_actions
+    max_steps = 200
 
     def __init__(self):
         self.mirror1_screw_x = 0
@@ -91,7 +92,7 @@ class InterfEnv(gym.Env):
     def seed(self, seed=None):
         self.action_space.seed(seed)
 
-    def step(self, action):
+    def step(self, actions):
         """
 
         :param action: (mirror_name, axis, delta_angle)
@@ -100,7 +101,9 @@ class InterfEnv(gym.Env):
 
         self.n_steps += 1
 
-        self._take_action(action, InterfEnv.mirror_screw_step)
+        for action_id, action_value in enumerate(actions):
+            self._take_action(action_id, action_value)
+
         center1, wave_vector1, center2, wave_vector2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
@@ -118,9 +121,8 @@ class InterfEnv(gym.Env):
         self.mirror2_screw_x = 0
         self.mirror2_screw_y = 0
 
-        # fix me: use random step for every action
-        for _ in range(InterfEnv.reset_actions):
-            self._take_action(self.action_space.sample(), InterfEnv.mirror_screw_step)
+        for action_id, action_value in enumerate(InterfEnv.action_space.sample()):
+            self._take_action(action_id, action_value)
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
