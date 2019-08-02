@@ -13,17 +13,16 @@ from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
 class InterfEnv(gym.Env):
     n_points = 64
     n_frames = 16
-    n_actions = 8
+    n_actions = 4
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
-    mirror_screw_step = pi / 100000
-    max_mirror_screw_value = 50 * mirror_screw_step
+    max_mirror_screw_value = 50 * pi / 100000
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
 
     observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
-    action_space = gym.spaces.Box(low=0, high=max_mirror_screw_value, shape=(n_actions,), dtype=np.float64)
+    action_space = gym.spaces.Box(low=-max_mirror_screw_value, high=max_mirror_screw_value, shape=(n_actions,), dtype=np.float64)
 
     lamb = 8 * 1e-4
     omega = 1
@@ -112,7 +111,7 @@ class InterfEnv(gym.Env):
 
         return self.state, reward, self.game_over(), self.info
 
-    def reset(self):
+    def reset(self, actions=None):
         self.n_steps = 0
         self.info = {}
 
@@ -121,8 +120,9 @@ class InterfEnv(gym.Env):
         self.mirror2_screw_x = 0
         self.mirror2_screw_y = 0
 
-        for action_id, action_value in enumerate(InterfEnv.action_space.sample()):
-            self._take_action(action_id, action_value)
+        actions = actions or InterfEnv.action_space.sample()
+        for action_id, action_value in enumerate(actions):
+            self._take_action(action_id, action_value / InterfEnv.max_mirror_screw_value)
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
@@ -143,7 +143,7 @@ class InterfEnv(gym.Env):
         else:
             return None
 
-    def _take_action(self, action, step_length):
+    def _take_action(self, action, normalized_step_length):
         """
         0 - do nothing
         [1, 2, 3, 4] - mirror1
@@ -153,27 +153,29 @@ class InterfEnv(gym.Env):
         """
 
         if action == 0:
-            self.mirror1_screw_y -= step_length
+            self.mirror1_screw_y = np.clip(self.mirror1_screw_y + normalized_step_length, -1, 1)
         elif action == 1:
-            self.mirror1_screw_y += step_length
+            self.mirror1_screw_x = np.clip(self.mirror1_screw_x + normalized_step_length, -1, 1)
         elif action == 2:
-            self.mirror1_screw_x -= step_length
+            self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         elif action == 3:
-            self.mirror1_screw_x += step_length
-        elif action == 4:
-            self.mirror2_screw_y -= step_length
-        elif action == 5:
-            self.mirror2_screw_y += step_length
-        elif action == 6:
-            self.mirror2_screw_x += step_length
-        elif action == 7:
-            self.mirror2_screw_x -= step_length
+            self.mirror2_screw_x = np.clip(self.mirror2_screw_x + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
     def _calc_centers_and_wave_vectors(self):
-        mirror1_x_component = - self.mirror1_screw_x / np.sqrt(self.mirror1_screw_x ** 2 + 1)
-        mirror1_y_component = - self.mirror1_screw_y / np.sqrt(self.mirror1_screw_y ** 2 + 1)
+        assert abs(self.mirror1_screw_x) <= 1, self.mirror1_screw_x
+
+        assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
+
+        assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
+
+        assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
+
+        mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.max_mirror_screw_value
+        mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.max_mirror_screw_value
+        mirror1_x_component = - mirror1_screw_x_value / np.sqrt(mirror1_screw_x_value ** 2 + 1)
+        mirror1_y_component = - mirror1_screw_y_value / np.sqrt(mirror1_screw_y_value ** 2 + 1)
         mirror1_z_component = np.sqrt(1 - mirror1_x_component ** 2 - mirror1_y_component ** 2)
         mirror1_normal = np.array(
             [mirror1_x_component, mirror1_y_component, mirror1_z_component],
@@ -181,8 +183,10 @@ class InterfEnv(gym.Env):
         )
         mirror1_normal = rotate_x(mirror1_normal, InterfEnv.mirror1_x_rotation_angle)
 
-        mirror2_x_component = - self.mirror2_screw_x / np.sqrt(self.mirror2_screw_x ** 2 + 1)
-        mirror2_y_component = - self.mirror2_screw_y / np.sqrt(self.mirror2_screw_y ** 2 + 1)
+        mirror2_screw_x_value = self.mirror2_screw_x * InterfEnv.max_mirror_screw_value
+        mirror2_screw_y_value = self.mirror2_screw_y * InterfEnv.max_mirror_screw_value
+        mirror2_x_component = - mirror2_screw_x_value / np.sqrt(mirror2_screw_x_value ** 2 + 1)
+        mirror2_y_component = - mirror2_screw_y_value / np.sqrt(mirror2_screw_y_value ** 2 + 1)
         mirror2_z_component = np.sqrt(1 - mirror2_x_component ** 2 - mirror2_y_component ** 2)
         mirror2_normal = np.array(
             [mirror2_x_component, mirror2_y_component, mirror2_z_component],
