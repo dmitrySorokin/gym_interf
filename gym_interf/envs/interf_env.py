@@ -22,7 +22,7 @@ class InterfEnv(gym.Env):
     reward_range = (0, 1)
 
     observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
-    action_space = gym.spaces.Box(low=-max_mirror_screw_value, high=max_mirror_screw_value, shape=(n_actions,), dtype=np.float64)
+    action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float64)
 
     lamb = 8 * 1e-4
     omega = 1
@@ -120,9 +120,10 @@ class InterfEnv(gym.Env):
         self.mirror2_screw_x = 0
         self.mirror2_screw_y = 0
 
-        actions = actions or InterfEnv.action_space.sample()
+        if actions is None:
+            actions = InterfEnv.action_space.sample()
         for action_id, action_value in enumerate(actions):
-            self._take_action(action_id, action_value / InterfEnv.max_mirror_screw_value)
+            self._take_action(action_id, action_value)
 
         c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
@@ -291,6 +292,8 @@ class InterfEnv(gym.Env):
         cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
 
         has_interf = band_width > 4 * cell_size
+
+        #print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
         #print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
         #    band_width_x, band_width_y, cell_size, has_interf)
