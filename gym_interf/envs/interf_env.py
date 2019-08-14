@@ -16,7 +16,8 @@ class InterfEnv(gym.Env):
     n_actions = 4
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
-    max_mirror_screw_value = 50 * pi / 100000
+    far_mirror_max_screw_value = 50 * pi / 100000
+    near_mirror_max_screw_value = 50 * pi / 100000
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -173,8 +174,8 @@ class InterfEnv(gym.Env):
 
         assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
 
-        mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.max_mirror_screw_value
-        mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.max_mirror_screw_value
+        mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.far_mirror_max_screw_value
+        mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.far_mirror_max_screw_value
         mirror1_x_component = - mirror1_screw_x_value / np.sqrt(mirror1_screw_x_value ** 2 + 1)
         mirror1_y_component = - mirror1_screw_y_value / np.sqrt(mirror1_screw_y_value ** 2 + 1)
         mirror1_z_component = np.sqrt(1 - mirror1_x_component ** 2 - mirror1_y_component ** 2)
@@ -184,8 +185,8 @@ class InterfEnv(gym.Env):
         )
         mirror1_normal = rotate_x(mirror1_normal, InterfEnv.mirror1_x_rotation_angle)
 
-        mirror2_screw_x_value = self.mirror2_screw_x * InterfEnv.max_mirror_screw_value
-        mirror2_screw_y_value = self.mirror2_screw_y * InterfEnv.max_mirror_screw_value
+        mirror2_screw_x_value = self.mirror2_screw_x * InterfEnv.near_mirror_max_screw_value
+        mirror2_screw_y_value = self.mirror2_screw_y * InterfEnv.near_mirror_max_screw_value
         mirror2_x_component = - mirror2_screw_x_value / np.sqrt(mirror2_screw_x_value ** 2 + 1)
         mirror2_y_component = - mirror2_screw_y_value / np.sqrt(mirror2_screw_y_value ** 2 + 1)
         mirror2_z_component = np.sqrt(1 - mirror2_x_component ** 2 - mirror2_y_component ** 2)
