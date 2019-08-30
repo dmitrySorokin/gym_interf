@@ -124,7 +124,7 @@ __device__ void calcImage(
         );
         
         atomicAdd(totIntens + iFrame, intens);
-        img[k] = static_cast<uint8_t>(intens * 255.0 / 4.0);
+        img[k] = static_cast<uint8_t>(255.0 * intens / 4.0);
     }
 }
 
@@ -155,7 +155,7 @@ def calc_image(
         wave_vector1, center1, radius1,
         wave_vector2, center2, radius2,
         n_frames, lamb, omega, has_interf,
-        block_size=64):  # number of threads per block
+        noise_coef, block_size=64):  # number of threads per block
 
     result = np.zeros(n_frames * n_points * n_points, dtype=np.uint8)
     tot_intens = np.zeros(n_frames, dtype=np.float64)
@@ -163,6 +163,9 @@ def calc_image(
     n_blocks = int(n / block_size)  # value determine by block size and total work
 
     impl = mod.get_function("calc_image")
+
+    assert noise_coef == 0, 'not implemented'
+    # see https://stackoverflow.com/questions/46169633/how-to-generate-random-number-inside-pycuda-kernel/46181257#46181257
 
     impl(
         np.float64(start), np.float64(end), np.int32(n_points),

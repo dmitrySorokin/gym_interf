@@ -24,7 +24,7 @@ libc.calc_image.argtypes = [
     c_double, c_double, c_int,
     POINTER(c_double), POINTER(c_double), c_double,
     POINTER(c_double), POINTER(c_double), c_double,
-    c_int, c_double, c_double, c_bool,
+    c_int, c_double, c_double, c_bool, c_double,
     c_int, POINTER(c_uint8), POINTER(c_double)
 ]
 
@@ -34,7 +34,7 @@ def calc_image(
         wave_vector1, center1, radius1,
         wave_vector2, center2, radius2,
         n_frames, lamb, omega, has_interf,
-        n_threads=8):
+        noise_coef, n_threads=8):
 
     image = (c_uint8 * (n_frames * n_points * n_points))()
     total_intens = (c_double * n_frames)()
@@ -46,7 +46,7 @@ def calc_image(
         start, end, n_points,
         to_double_pointer(wave_vector1), to_double_pointer(center1), radius1,
         to_double_pointer(wave_vector2), to_double_pointer(center2), radius2,
-        n_frames, lamb, omega, has_interf,
+        n_frames, lamb, omega, has_interf, noise_coef,
         n_threads, image, total_intens
     )
 

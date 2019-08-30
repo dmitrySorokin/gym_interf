@@ -17,7 +17,7 @@ class InterfEnv(gym.Env):
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     far_mirror_max_screw_value = 50 * pi / 100000
-    near_mirror_max_screw_value = 50 * pi / 100000
+    near_mirror_max_screw_value = 5 * pi / 100000
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -56,6 +56,7 @@ class InterfEnv(gym.Env):
         self.n_steps = None
         self.info = None
         self.visib = None
+        self.noise_coef = 0
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
@@ -76,6 +77,9 @@ class InterfEnv(gym.Env):
             self._calc_image = calc_image_gpu
         else:
             assert False, 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
+
+    def add_noise(self, noise_coef):
+        self.noise_coef = noise_coef
 
     def get_keys_to_action(self):
         return {
@@ -305,6 +309,7 @@ class InterfEnv(gym.Env):
             wave_vector1, center1, InterfEnv.radius,
             wave_vector2, center2, InterfEnv.radius,
             InterfEnv.n_frames, InterfEnv.lamb, InterfEnv.omega,
+            noise_coef=self.noise_coef,
             has_interf=has_interf)
 
         tend = tm.time()

@@ -5,9 +5,8 @@
 #include <vector>
 #include <math.h>
 #include <future>
-
-#include <iostream>
 #include <algorithm>
+#include <random>
 
 
 namespace {
@@ -22,8 +21,16 @@ void calcImage(
 		const Vector& wave_vector1, const Vector& center1, double radius1,
         const Vector& wave_vector2, const Vector& center2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
+    std::random_device rnd;
+    std::mt19937 generator(rnd());
+    std::uniform_int_distribution<> distrib(0, noiseCoeff);
+
+    auto noise = [&]() {
+        return distrib(generator);
+    };
+
 	const double k = 2 * M_PI / lambda;
 
     auto calcWave1 = [&](double z, double x, double y) {
@@ -102,7 +109,10 @@ void calcImage(
                 deltaPhase[k] + omega * time
             );
 
-            img[k] = static_cast<uint8_t>(255.0 * intens / 4.0);
+
+            const double intensWithNoise =
+                (255.0 * intens / 4.0 + noise()) / (255.0 + noiseCoeff) * 255.0;
+            img[k] = static_cast<uint8_t>(intensWithNoise);
             integIntens += intens;
         }
     };
@@ -131,7 +141,7 @@ void calc_image(
 		const double* vector1, const double*  cnt1, double radius1,
         const double* vector2, const double*  cnt2, double radius2,
         int nFrames, double lambda, double omega, bool hasInterference,
-        int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
 	auto wave_vector2 = Vector{vector2[0], vector2[1], vector2[2]};
@@ -142,5 +152,5 @@ void calc_image(
 		wave_vector1, center1, radius1,
 		wave_vector2, center2, radius2,
 		nFrames, lambda, omega, hasInterference,
-		nThreads, image, totIntens);
+		noiseCoeff, nThreads, image, totIntens);
 }
