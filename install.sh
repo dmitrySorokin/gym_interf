@@ -14,4 +14,4 @@ make install -j7
 
 # install pip package
 cd ../../../../
-pip3 install -e ./
+#pip3 install -e ./

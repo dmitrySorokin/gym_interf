@@ -16,8 +16,9 @@ class InterfEnv(gym.Env):
     n_actions = 4
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
-    far_mirror_max_screw_value = 50 * pi / 100000
-    near_mirror_max_screw_value = 5 * pi / 100000
+    one_step = 0.7 * 1e-6
+    far_mirror_max_screw_value = one_step * 10000
+    near_mirror_max_screw_value = one_step * 10000
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -25,18 +26,18 @@ class InterfEnv(gym.Env):
     observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float64)
 
-    lamb = 8 * 1e-4
+    lamb = 6.35 * 1e-4
     omega = 1
     radius = 1
 
     # size of interferometer
-    a = 1000
-    b = 200
-    c = 10
+    a = 200
+    b = 300
+    c = 100
 
     # image min & max coords
-    x_min = -4
-    x_max = 4
+    x_min = -3.57 / 2
+    x_max = 3.57 / 2
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
@@ -296,7 +297,7 @@ class InterfEnv(gym.Env):
         band_width = min(band_width_x, band_width_y)
         cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
 
-        has_interf = band_width > 4 * cell_size
+        has_interf = True#band_width > 4 * cell_size
 
         #print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
@@ -304,11 +305,13 @@ class InterfEnv(gym.Env):
         #    band_width_x, band_width_y, cell_size, has_interf)
         #)
 
+        n_backward = 2
+
         state = self._calc_image(
             InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
             wave_vector1, center1, InterfEnv.radius,
             wave_vector2, center2, InterfEnv.radius,
-            InterfEnv.n_frames, InterfEnv.lamb, InterfEnv.omega,
+            InterfEnv.n_frames - n_backward, n_backward, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             has_interf=has_interf)
 

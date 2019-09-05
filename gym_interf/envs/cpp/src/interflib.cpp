@@ -7,6 +7,7 @@
 #include <future>
 #include <algorithm>
 #include <random>
+#include <iostream>
 
 
 namespace {
@@ -20,15 +21,20 @@ void calcImage(
 		double start, double end, int nPoints,
 		const Vector& wave_vector1, const Vector& center1, double radius1,
         const Vector& wave_vector2, const Vector& center2, double radius2,
-        int nFrames, double lambda, double omega, bool hasInterference,
+        int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
     std::random_device rnd;
     std::mt19937 generator(rnd());
     std::uniform_int_distribution<> distrib(0, noiseCoeff);
+    std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
 
     auto noise = [&]() {
         return distrib(generator);
+    };
+
+    auto rndPhase = [&] {
+        return phaseDistrib(generator);
     };
 
 	const double k = 2 * M_PI / lambda;
@@ -118,13 +124,25 @@ void calcImage(
     };
 
     std::vector<std::future<void>> imageFutures;
-    for (int iFrame = 0; iFrame < nFrames; ++iFrame) {
-        double time = 2 * M_PI * iFrame / nFrames;
+
+    for (int iFrame = 0; iFrame < nForwardFrames; ++iFrame) {
+        double time = 2 * M_PI * iFrame / nForwardFrames;
         int ind = iFrame * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
             std::launch::async, imageWorker, img, time,
             std::ref(totIntens[iFrame])));
+    }
+
+    auto startPhase = rndPhase();
+    for (int iFrame = 0; iFrame < nBackwardFrames; ++iFrame) {
+        double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames);
+        std::cout << time << std::endl;
+        int ind = (iFrame + nForwardFrames) * totalPoints;
+        uint8_t* img = image + ind;
+        imageFutures.push_back(std::async(
+            std::launch::async, imageWorker, img, time,
+            std::ref(totIntens[iFrame + nForwardFrames])));
     }
 
     // wait for frames
@@ -140,7 +158,7 @@ void calc_image(
 		double start, double end, int nPoints,
 		const double* vector1, const double*  cnt1, double radius1,
         const double* vector2, const double*  cnt2, double radius2,
-        int nFrames, double lambda, double omega, bool hasInterference,
+        int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
@@ -151,6 +169,6 @@ void calc_image(
 	calcImage(start, end, nPoints,
 		wave_vector1, center1, radius1,
 		wave_vector2, center2, radius2,
-		nFrames, lambda, omega, hasInterference,
+		nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
 		noiseCoeff, nThreads, image, totIntens);
 }
