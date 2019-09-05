@@ -112,7 +112,7 @@ void calcImage(
             const double intens = calcIntens(
                 ampl1[k], 
                 ampl2[k], 
-                deltaPhase[k] + omega * time
+                deltaPhase[k] - omega * time
             );
 
 
@@ -125,8 +125,9 @@ void calcImage(
 
     std::vector<std::future<void>> imageFutures;
 
+    auto startPhase = rndPhase();
     for (int iFrame = 0; iFrame < nForwardFrames; ++iFrame) {
-        double time = 2 * M_PI * iFrame / nForwardFrames;
+        double time = startPhase + 2 * M_PI * iFrame / nForwardFrames;
         int ind = iFrame * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
@@ -134,10 +135,9 @@ void calcImage(
             std::ref(totIntens[iFrame])));
     }
 
-    auto startPhase = rndPhase();
+    startPhase = rndPhase();
     for (int iFrame = 0; iFrame < nBackwardFrames; ++iFrame) {
         double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames);
-        std::cout << time << std::endl;
         int ind = (iFrame + nForwardFrames) * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(

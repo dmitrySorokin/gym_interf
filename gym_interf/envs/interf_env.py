@@ -16,7 +16,7 @@ class InterfEnv(gym.Env):
     n_actions = 4
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
-    one_step = 0.7 * 1e-6
+    one_step = 0.52 * 1e-6
     far_mirror_max_screw_value = one_step * 10000
     near_mirror_max_screw_value = one_step * 10000
 
@@ -160,13 +160,13 @@ class InterfEnv(gym.Env):
         """
 
         if action == 0:
-            self.mirror1_screw_y = np.clip(self.mirror1_screw_y + normalized_step_length, -1, 1)
-        elif action == 1:
             self.mirror1_screw_x = np.clip(self.mirror1_screw_x + normalized_step_length, -1, 1)
+        elif action == 1:
+            self.mirror1_screw_y = np.clip(self.mirror1_screw_y + normalized_step_length, -1, 1)
         elif action == 2:
-            self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
-        elif action == 3:
             self.mirror2_screw_x = np.clip(self.mirror2_screw_x + normalized_step_length, -1, 1)
+        elif action == 3:
+            self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
