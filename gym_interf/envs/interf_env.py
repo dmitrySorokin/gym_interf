@@ -17,8 +17,8 @@ class InterfEnv(gym.Env):
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_step = 0.52 * 1e-6
-    far_mirror_max_screw_value = one_step * 10000
-    near_mirror_max_screw_value = one_step * 10000
+    far_mirror_max_screw_value = one_step * 5000
+    near_mirror_max_screw_value = one_step * 5000
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
@@ -57,6 +57,8 @@ class InterfEnv(gym.Env):
         self.n_steps = None
         self.info = None
         self.visib = None
+        self.dist = None
+        self.angle = None
         self.noise_coef = 0
 
         self._calc_reward = self._calc_reward_visib_minus_1
@@ -109,10 +111,10 @@ class InterfEnv(gym.Env):
         for action_id, action_value in enumerate(actions):
             self._take_action(action_id, action_value)
 
-        center1, wave_vector1, center2, wave_vector2 = self._calc_centers_and_wave_vectors()
+        center1, wave_vector1, center2, wave_vector2, self.angle = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(center1, wave_vector1, center2, wave_vector2)
 
-        distance = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        self.dist = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
         reward = self._calc_reward(tot_intens)
 
         return self.state, reward, self.game_over(), self.info
@@ -128,14 +130,16 @@ class InterfEnv(gym.Env):
 
         if actions is None:
             actions = InterfEnv.action_space.sample()
+
         for action_id, action_value in enumerate(actions):
             self._take_action(action_id, action_value)
 
-        c1, k1, c2, k2 = self._calc_centers_and_wave_vectors()
+        c1, k1, c2, k2, self.angle = self._calc_centers_and_wave_vectors()
         self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
 
         # should be called after self._calc_state()
         self.visib = self._calc_visib(tot_intens)
+        self.dist = self._calc_projection_distance(c1, k1, c2, k2)
 
         return self.state
 
@@ -220,9 +224,10 @@ class InterfEnv(gym.Env):
         wave_vector2 = reflect(wave_vector2, mirror2_normal)
         self.info['reflect_with_mirror2'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
-        self.info['angle_between_beams'] = angle_between(wave_vector1, wave_vector2)
+        angle = angle_between(wave_vector1, wave_vector2)
+        self.info['angle_between_beams'] = angle
 
-        return center1, wave_vector1, center2, wave_vector2
+        return center1, wave_vector1, center2, wave_vector2, angle
 
     def _calc_projection_distance(self, center1, wave_vector1, center2, wave_vector2):
         projection_plane_normal = np.array([0, 0, 1])

@@ -26,8 +26,10 @@ void calcImage(
 {
     std::random_device rnd;
     std::mt19937 generator(rnd());
-    std::uniform_int_distribution<> distrib(0, noiseCoeff);
+    std::uniform_real_distribution<> distrib(0, noiseCoeff);
     std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
+    std::uniform_real_distribution<> amplDistrib(0.0, 0.2);
+
 
     auto noise = [&]() {
         return distrib(generator);
@@ -37,17 +39,21 @@ void calcImage(
         return phaseDistrib(generator);
     };
 
+    auto amplNoise = [&] {
+        return 1.0 - amplDistrib(generator);
+    };
+
 	const double k = 2 * M_PI / lambda;
 
     auto calcWave1 = [&](double z, double x, double y) {
     	const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
-    	return Wave{std::exp(-r2 / (radius1 * radius1)), z * k};
+    	return Wave{std::exp(-r2 / (radius1 * radius1)) * amplNoise(), z * k};
     	//return Wave{1.0 * (r2 <= radius1 * radius1), z * k};
     };
 
     auto calcWave2 = [&](double z, double x, double y) {
     	const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
-    	return Wave{std::exp(-r2 / (radius2 * radius2)), z * k};
+    	return Wave{std::exp(-r2 / (radius2 * radius2)) * amplNoise(), z * k};
     	//return Wave{1.0 * (r2 <= radius2 * radius2), z * k};
     };
 
