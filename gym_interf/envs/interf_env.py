@@ -8,6 +8,7 @@ from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
 from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
+from .domain_randomizer import DomainRandomizer
 
 
 class InterfEnv(gym.Env):
@@ -35,10 +36,6 @@ class InterfEnv(gym.Env):
     b = 300
     c = 100
 
-    # image min & max coords
-    x_min = -3.57 / 2
-    x_max = 3.57 / 2
-
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
     mirror2_x_rotation_angle = -pi / 4
@@ -63,6 +60,12 @@ class InterfEnv(gym.Env):
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
+        self._image_randomizer = DomainRandomizer('data')
+        self._use_beam_masks = False
+
+        # image min & max coords
+        self.x_min = -3.57 / 2
+        self.x_max = 3.57 / 2
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -83,6 +86,9 @@ class InterfEnv(gym.Env):
 
     def add_noise(self, noise_coef):
         self.noise_coef = noise_coef
+
+    def use_beam_masks(self, enabled):
+        self._use_beam_masks = enabled
 
     def get_keys_to_action(self):
         return {
@@ -300,7 +306,7 @@ class InterfEnv(gym.Env):
         band_width_x = InterfEnv.lamb / abs(wave_vector2[0])
         band_width_y = InterfEnv.lamb / abs(wave_vector2[1])
         band_width = min(band_width_x, band_width_y)
-        cell_size = (InterfEnv.x_max - InterfEnv.x_min) / InterfEnv.n_points
+        cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
         has_interf = True#band_width > 4 * cell_size
 
@@ -313,11 +319,12 @@ class InterfEnv(gym.Env):
         n_backward = 2
 
         state = self._calc_image(
-            InterfEnv.x_min, InterfEnv.x_max, InterfEnv.n_points,
-            wave_vector1, center1, InterfEnv.radius,
-            wave_vector2, center2, InterfEnv.radius,
+            self.x_min, self.x_max, InterfEnv.n_points,
+            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
+            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
             InterfEnv.n_frames - n_backward, n_backward, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
+            use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
 
         tend = tm.time()

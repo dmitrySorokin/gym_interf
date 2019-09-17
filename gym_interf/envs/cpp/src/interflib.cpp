@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <random>
 #include <iostream>
+#include <mutex>
+#include <fstream>
 
 
 namespace {
@@ -19,17 +21,17 @@ struct Wave {
 
 void calcImage(
 		double start, double end, int nPoints,
-		const Vector& wave_vector1, const Vector& center1, double radius1,
-        const Vector& wave_vector2, const Vector& center2, double radius2,
+		const Vector& wave_vector1, const Vector& center1, double radius1, const double* beamImage1, double length1, int nPoints1,
+        const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2, double length2, int nPoints2,
         int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
+
     std::random_device rnd;
     std::mt19937 generator(rnd());
     std::uniform_real_distribution<> distrib(0, noiseCoeff);
     std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
     std::uniform_real_distribution<> amplDistrib(0.0, 0.2);
-
 
     auto noise = [&]() {
         return distrib(generator);
@@ -46,14 +48,38 @@ void calcImage(
 	const double k = 2 * M_PI / lambda;
 
     auto calcWave1 = [&](double z, double x, double y) {
-    	const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
+        if (beamImage1) {
+            const double step1 = length1 / nPoints1;
+            auto clipPixels = [&](int value) {
+                return std::min(std::max(0, value), nPoints1 - 1);
+            };
+            const int nPixelsX = clipPixels((x - center1[0]) / step1 + nPoints1 / 2);
+            const int nPixelsY = clipPixels((y - center1[1]) / step1 + nPoints1 / 2);
+            double ampl = beamImage1[nPixelsX * nPoints1 + nPixelsY];
+
+            return  Wave{ampl * amplNoise(), z * k};
+        }
+
+        const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
     	return Wave{std::exp(-r2 / (radius1 * radius1)) * amplNoise(), z * k};
     	//return Wave{1.0 * (r2 <= radius1 * radius1), z * k};
     };
 
     auto calcWave2 = [&](double z, double x, double y) {
-    	const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
-    	return Wave{std::exp(-r2 / (radius2 * radius2)) * amplNoise(), z * k};
+        if (beamImage2) {
+            const double step2 = length2 / nPoints2;
+            auto clipPixels = [&](int value) {
+                return std::min(std::max(0, value), nPoints2 - 1);
+            };
+            const int nPixelsX = clipPixels((x - center2[0]) / step2 + nPoints2 / 2);
+            const int nPixelsY = clipPixels((y - center2[1]) / step2 + nPoints2 / 2);
+            double ampl = beamImage2[nPixelsX * nPoints2 + nPixelsY];
+
+            return  Wave{ampl * amplNoise(), z * k};
+        }
+
+        const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
+    	return Wave{std::exp(-r2 / (radius2 * radius2)), z * k};
     	//return Wave{1.0 * (r2 <= radius2 * radius2), z * k};
     };
 
@@ -121,7 +147,6 @@ void calcImage(
                 deltaPhase[k] - omega * time
             );
 
-
             const double intensWithNoise =
                 (255.0 * intens / 4.0 + noise()) / (255.0 + noiseCoeff) * 255.0;
             img[k] = static_cast<uint8_t>(intensWithNoise);
@@ -162,8 +187,8 @@ void calcImage(
 
 void calc_image(
 		double start, double end, int nPoints,
-		const double* vector1, const double*  cnt1, double radius1,
-        const double* vector2, const double*  cnt2, double radius2,
+		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1, double length1, int nPoints1,
+        const double* vector2, const double*  cnt2, double radius2, const double* beamImage2, double length2, int nPoints2,
         int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
@@ -173,8 +198,8 @@ void calc_image(
 	auto center2 = Vector{cnt2[0], cnt2[1], cnt2[2]};
 
 	calcImage(start, end, nPoints,
-		wave_vector1, center1, radius1,
-		wave_vector2, center2, radius2,
+		wave_vector1, center1, radius1, beamImage1, length1, nPoints1,
+		wave_vector2, center2, radius2, beamImage2, length2, nPoints2,
 		nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
 		noiseCoeff, nThreads, image, totIntens);
 }
