@@ -14,9 +14,9 @@ class DomainRandomizer(object):
             self.masks.append(mask)
 
     def get_mask(self):
-        return self.masks[0]
         rnd = np.random.randint(0, len(self.masks))
         img = self.masks[rnd]
+        return img
         (h, w) = img.shape
         center = (w / 2, h / 2)
         angle = np.random.randint(0, 360)
