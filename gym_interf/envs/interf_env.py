@@ -57,6 +57,7 @@ class InterfEnv(gym.Env):
         self.dist = None
         self.angle = None
         self.noise_coef = 0
+        self.backward_frames = 4
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
@@ -83,6 +84,9 @@ class InterfEnv(gym.Env):
             self._calc_image = calc_image_gpu
         else:
             assert False, 'unknown device == {} optnions are "cpu", "gpu"'.format(device)
+
+    def set_backward_frames(self, val):
+        self.backward_frames = val
 
     def add_noise(self, noise_coef):
         self.noise_coef = noise_coef
@@ -316,13 +320,11 @@ class InterfEnv(gym.Env):
         #    band_width_x, band_width_y, cell_size, has_interf)
         #)
 
-        n_backward = 2
-
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
             wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
             wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
-            InterfEnv.n_frames - n_backward, n_backward, InterfEnv.lamb, InterfEnv.omega,
+            InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
