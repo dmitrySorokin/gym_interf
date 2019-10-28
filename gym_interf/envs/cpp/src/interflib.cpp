@@ -21,8 +21,10 @@ struct Wave {
 
 void calcImage(
 		double start, double end, int nPoints,
-		const Vector& wave_vector1, const Vector& center1, double radius1, const double* beamImage1, double length1, int nPoints1,
-        const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2, double length2, int nPoints2,
+		const Vector& wave_vector1, const Vector& center1, double radius1, const double* beamImage1,
+		double length1, int nPoints1, double sigma1x, double sigma1y,
+        const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2,
+        double length2, int nPoints2, double sigma2x, double sigma2y,
         int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
@@ -60,7 +62,7 @@ void calcImage(
             return  Wave{ampl * amplNoise(), z * k};
         }
 
-        const double r2 = (x - center1[0]) * (x - center1[0]) + (y - center1[1]) * (y - center1[1]);
+        const double r2 = sigma1x * (x - center1[0]) * (x - center1[0]) + sigma1y * (y - center1[1]) * (y - center1[1]);
     	return Wave{std::exp(-r2 / (radius1 * radius1)) * amplNoise(), z * k};
     	//return Wave{1.0 * (r2 <= radius1 * radius1), z * k};
     };
@@ -78,7 +80,7 @@ void calcImage(
             return  Wave{ampl * amplNoise(), z * k};
         }
 
-        const double r2 = (x - center2[0]) * (x - center2[0]) + (y - center2[1]) * (y - center2[1]);
+        const double r2 = sigma2x * (x - center2[0]) * (x - center2[0]) + sigma2y * (y - center2[1]) * (y - center2[1]);
     	return Wave{std::exp(-r2 / (radius2 * radius2)), z * k};
     	//return Wave{1.0 * (r2 <= radius2 * radius2), z * k};
     };
@@ -187,8 +189,10 @@ void calcImage(
 
 void calc_image(
 		double start, double end, int nPoints,
-		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1, double length1, int nPoints1,
-        const double* vector2, const double*  cnt2, double radius2, const double* beamImage2, double length2, int nPoints2,
+		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1,
+		double length1, int nPoints1, double sigma1x, double sigma1y,
+        const double* vector2, const double*  cnt2, double radius2, const double* beamImage2,
+        double length2, int nPoints2, double sigma2x, double sigma2y,
         int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
@@ -198,8 +202,8 @@ void calc_image(
 	auto center2 = Vector{cnt2[0], cnt2[1], cnt2[2]};
 
 	calcImage(start, end, nPoints,
-		wave_vector1, center1, radius1, beamImage1, length1, nPoints1,
-		wave_vector2, center2, radius2, beamImage2, length2, nPoints2,
+		wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y,
+		wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y,
 		nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
 		noiseCoeff, nThreads, image, totIntens);
 }

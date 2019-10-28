@@ -9,6 +9,7 @@ from scipy import optimize
 from .calc_image_cpp import calc_image as calc_image_cpp
 from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
 from .domain_randomizer import DomainRandomizer
+from .exp_state_provider import ExpStateProvider
 
 
 class InterfEnv(gym.Env):
@@ -24,7 +25,7 @@ class InterfEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
 
-    observation_space = gym.spaces.Box(low=0, high=4, shape=(n_frames, n_points, n_points), dtype=np.float64)
+    observation_space = gym.spaces.Box(low=0, high=255, shape=(n_frames, n_points, n_points), dtype=np.uint8)
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float64)
 
     lamb = 6.35 * 1e-4
@@ -64,6 +65,10 @@ class InterfEnv(gym.Env):
         self._image_randomizer = DomainRandomizer('data')
         self._use_beam_masks = False
 
+        self._exp_state_provider = ExpStateProvider('saved_states')
+        self._exp_state_provider.get_state()
+        self._use_exp_data = False
+
         # image min & max coords
         self.x_min = -3.57 / 2
         self.x_max = 3.57 / 2
@@ -93,6 +98,9 @@ class InterfEnv(gym.Env):
 
     def use_beam_masks(self, enabled):
         self._use_beam_masks = enabled
+
+    def use_exp_data(self, enabled):
+        self._use_exp_data = enabled
 
     def get_keys_to_action(self):
         return {
@@ -303,6 +311,13 @@ class InterfEnv(gym.Env):
                self.n_steps >= InterfEnv.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
+        if self._use_exp_data:
+            state, tot_intens, handles = self._exp_state_provider.get_state()
+            self.mirror1_screw_x, self.mirror1_screw_y, self.mirror2_screw_x, self.mirror2_screw_y = handles
+            print('-handles', -handles / 5000)
+            self.info['state_calc_time'] = 0
+            return state, tot_intens
+
         state_calc_time = 0
 
         tstart = tm.time()
@@ -322,8 +337,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
-            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64,
+            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1,
+            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1,
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
