@@ -20,7 +20,7 @@ class InterfEnv(gym.Env):
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_step = 0.52 * 1e-6
     far_mirror_max_screw_value = one_step * 5000
-    near_mirror_max_screw_value = one_step * 5000
+    near_mirror_max_screw_value = one_step * 2500
 
     metadata = {'render.modes': ['human', 'rgb_array']}
     reward_range = (0, 1)
