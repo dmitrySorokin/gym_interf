@@ -337,8 +337,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, np.sqrt(87),
-            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, np.sqrt(366),
+            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(87),
+            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(366),
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
