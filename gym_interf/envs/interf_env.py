@@ -30,7 +30,6 @@ class InterfEnv(gym.Env):
 
     lamb = 6.35 * 1e-4
     omega = 1
-    radius = 1
 
     # size of interferometer
     a = 200
@@ -59,6 +58,7 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
+        self.radius = 1.0
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
@@ -72,6 +72,9 @@ class InterfEnv(gym.Env):
         # image min & max coords
         self.x_min = -3.57 / 2
         self.x_max = 3.57 / 2
+
+    def set_radius(self, value):
+        self.radius = value
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -182,24 +185,21 @@ class InterfEnv(gym.Env):
         """
 
         if action == 0:
-            self.mirror1_screw_x = np.clip(self.mirror1_screw_x + normalized_step_length, -1, 1)
+            self.mirror1_screw_x = self.mirror1_screw_x + normalized_step_length
         elif action == 1:
-            self.mirror1_screw_y = np.clip(self.mirror1_screw_y + normalized_step_length, -1, 1)
+            self.mirror1_screw_y = self.mirror1_screw_y + normalized_step_length
         elif action == 2:
-            self.mirror2_screw_x = np.clip(self.mirror2_screw_x + normalized_step_length, -1, 1)
+            self.mirror2_screw_x = self.mirror2_screw_x + normalized_step_length
         elif action == 3:
-            self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
+            self.mirror2_screw_y = self.mirror2_screw_y + normalized_step_length
         else:
             assert False, 'unknown action = {}'.format(action)
 
     def _calc_centers_and_wave_vectors(self):
-        assert abs(self.mirror1_screw_x) <= 1, self.mirror1_screw_x
-
-        assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
-
-        assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
-
-        assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
+        #assert abs(self.mirror1_screw_x) <= 1, self.mirror1_screw_x
+        #assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
+        #assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
+        #assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
 
         mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.far_mirror_max_screw_value
         mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.far_mirror_max_screw_value
@@ -337,8 +337,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(87),
-            wave_vector2, center2, InterfEnv.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(366),
+            wave_vector1, center1, self.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(87),
+            wave_vector2, center2, self.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(366),
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
