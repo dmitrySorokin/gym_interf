@@ -42,7 +42,6 @@ class InterfEnv(gym.Env):
 
     done_visibility = 0.9999
 
-    max_steps = 200
 
     def __init__(self):
         self.mirror1_screw_x = 0
@@ -59,6 +58,7 @@ class InterfEnv(gym.Env):
         self.noise_coef = 0
         self.backward_frames = 4
         self.radius = 1.0
+        self.max_steps = 200
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
@@ -75,6 +75,15 @@ class InterfEnv(gym.Env):
 
     def set_radius(self, value):
         self.radius = value
+
+    def set_xmin(self, value):
+        self.x_min = value
+
+    def set_xmax(self, value):
+        self.x_max = value
+
+    def set_max_steps(self, value):
+        self.max_steps = value
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -308,7 +317,7 @@ class InterfEnv(gym.Env):
 
     def game_over(self):
         return self.visib > InterfEnv.done_visibility or \
-               self.n_steps >= InterfEnv.max_steps
+               self.n_steps >= self.max_steps
 
     def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
         if self._use_exp_data:
