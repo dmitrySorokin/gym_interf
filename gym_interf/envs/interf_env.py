@@ -28,10 +28,11 @@ class InterfEnv(gym.Env):
     observation_space = gym.spaces.Box(low=0, high=255, shape=(n_frames, n_points, n_points), dtype=np.uint8)
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float64)
 
+    # in mm
     lamb = 6.35 * 1e-4
     omega = 1
 
-    # size of interferometer
+    # size of interferometer (in mm)
     a = 200
     b = 300
     c = 100
@@ -194,21 +195,21 @@ class InterfEnv(gym.Env):
         """
 
         if action == 0:
-            self.mirror1_screw_x = self.mirror1_screw_x + normalized_step_length
+            self.mirror1_screw_x = np.clip(self.mirror1_screw_x + normalized_step_length, -1, 1)
         elif action == 1:
-            self.mirror1_screw_y = self.mirror1_screw_y + normalized_step_length
+            self.mirror1_screw_y = np.clip(self.mirror1_screw_y + normalized_step_length, -1, 1)
         elif action == 2:
-            self.mirror2_screw_x = self.mirror2_screw_x + normalized_step_length
+            self.mirror2_screw_x = np.clip(self.mirror2_screw_x + normalized_step_length, -1, 1)
         elif action == 3:
-            self.mirror2_screw_y = self.mirror2_screw_y + normalized_step_length
+            self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
     def _calc_centers_and_wave_vectors(self):
-        #assert abs(self.mirror1_screw_x) <= 1, self.mirror1_screw_x
-        #assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
-        #assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
-        #assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
+        assert abs(self.mirror1_screw_x) <= 1, self.mirror1_screw_x
+        assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
+        assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
+        assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
 
         mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.far_mirror_max_screw_value
         mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.far_mirror_max_screw_value
