@@ -58,8 +58,11 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 1.0
+        self.radius = 0.5
         self.max_steps = 200
+
+        self.beam1_mask = None
+        self.beam2_mask = None
 
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
@@ -153,6 +156,8 @@ class InterfEnv(gym.Env):
     def reset(self, actions=None):
         self.n_steps = 0
         self.info = {}
+        self.beam1_mask = self._image_randomizer.get_mask()
+        self.beam2_mask = self._image_randomizer.get_mask()
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -347,8 +352,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(87),
-            wave_vector2, center2, self.radius, self._image_randomizer.get_mask(), 3.57, 64, 1, 1, 1.0,#np.sqrt(366),
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, 1.0, 1, 1.0,#np.sqrt(87),
+            wave_vector2, center2, self.radius, self.beam2_mask, 3.57, 64, 1.0, 1, 1.0,#np.sqrt(366),
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
