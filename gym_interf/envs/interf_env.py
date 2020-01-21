@@ -64,6 +64,13 @@ class InterfEnv(gym.Env):
         self.beam1_mask = None
         self.beam2_mask = None
 
+        self.beam1_rotation = 0
+        self.beam2_rotation = 0
+        self.beam1_sigmax = 1
+        self.beam1_sigmay = 1
+        self.beam2_sigmax = 1
+        self.beam2_sigmay = 1
+
         self._calc_reward = self._calc_reward_visib_minus_1
         self._calc_image = calc_image_cpp
         self._image_randomizer = DomainRandomizer('data')
@@ -88,6 +95,17 @@ class InterfEnv(gym.Env):
 
     def set_max_steps(self, value):
         self.max_steps = value
+
+    def set_beam_rotation(self, value):
+        self.beam1_rotation = value
+        self.beam2_rotation = value
+
+    def set_beam_ellipticity(self, value):
+        self.beam1_sigmax = 1.0 / np.sqrt(value)
+        self.beam1_sigmay = 1.0 * np.sqrt(value)
+        self.beam2_sigmax = self.beam1_sigmax
+        self.beam2_sigmay = self.beam1_sigmay
+
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -352,8 +370,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, 1.0, 1, 1.0,#np.sqrt(87),
-            wave_vector2, center2, self.radius, self.beam2_mask, 3.57, 64, 1.0, 1, 1.0,#np.sqrt(366),
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
+            wave_vector2, center2, self.radius, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
