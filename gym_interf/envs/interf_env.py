@@ -275,6 +275,8 @@ class InterfEnv(gym.Env):
         wave_vector2 = reflect(wave_vector2, mirror2_normal)
         self.info['reflect_with_mirror2'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
+        self.info['kvector'] = wave_vector2
+
         angle = angle_between(wave_vector1, wave_vector2)
         self.info['angle_between_beams'] = angle
 
