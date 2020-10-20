@@ -58,7 +58,9 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.957
+        self.radius1 = 0.5
+        self.radius2 = 1
+        self.r_curvature = 5
         self.max_steps = 200
 
         self.beam1_mask = None
@@ -84,8 +86,11 @@ class InterfEnv(gym.Env):
         self.x_min = -3.57 / 2
         self.x_max = 3.57 / 2
 
-    def set_radius(self, value):
-        self.radius = value
+    def set_radius1(self, value):
+        self.radius1 = value
+
+    def set_radius2(self, value):
+        self.radius2 = value
 
     def set_xmin(self, value):
         self.x_min = value
@@ -372,8 +377,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
-            wave_vector2, center2, self.radius, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
+            wave_vector1, center1, self.radius1, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
+            wave_vector2, center2, self.radius2, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation, self.r_curvature,
             InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
