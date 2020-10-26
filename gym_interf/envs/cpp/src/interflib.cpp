@@ -210,8 +210,8 @@ void calc_image(
 		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const double* vector2, const double*  cnt2, double radius2, const double* beamImage2,
-        double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,  double r_curvature,
-        int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
+        double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,
+        double r_curvature, int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
         double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
@@ -223,5 +223,5 @@ void calc_image(
 		wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y, beam1Ampl, beam1Rotation,
 		wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y, beam2Ampl, beam2Rotation, r_curvature,
 		nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
-		noiseCoeff, nThreads, image, totIntens;
+		noiseCoeff, nThreads, image, totIntens);
 }

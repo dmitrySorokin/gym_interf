@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -O3 -DNDEBUG  -shared -Wl,-soname,libinterf.so -o libinterf.so CMakeFiles/interf.dir/src/utils.cpp.o CMakeFiles/interf.dir/src/interflib.cpp.o 
