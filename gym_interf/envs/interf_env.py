@@ -15,7 +15,7 @@ from .exp_state_provider import ExpStateProvider
 class InterfEnv(gym.Env):
     n_points = 64
     n_frames = 16
-    n_actions = 4
+    n_actions = 5
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_step = 0.52 * 1e-6
@@ -36,6 +36,16 @@ class InterfEnv(gym.Env):
     a = 200
     b = 300
     c = 100
+
+    # focuses of lenses (in mm)
+    f1 = 100
+    f2 = 200
+
+    # distance between lenses
+    # lens_dist = 305
+    # delta = distance - f2 - f2
+
+    delta = 0.001 / 25  # from -1 to 1, 1 is 25 mm
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
@@ -58,7 +68,12 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.957
+
+        self.radius_up = 0.957
+        self.radius_bottom = 0.957 * self.f2 / self.f1
+
+        self.r_curvature = self.f2 ** 2 / 0.001
+
         self.max_steps = 200
 
         self.beam1_mask = None
@@ -84,8 +99,20 @@ class InterfEnv(gym.Env):
         self.x_min = -3.57 / 2
         self.x_max = 3.57 / 2
 
-    def set_radius(self, value):
-        self.radius = value
+    def set_delta(self, value):
+        self.delta = value
+
+    def calc_r_curvature(self, value):  # value here is delta
+        if value != 0:
+            self.r_curvature = self.f2 ** 2 / (25 * value)
+        else:
+            self.r_curvature = 9999999
+
+    def set_radius_up(self, value):
+        self.radius_up = value
+
+    def set_radius_bottom(self, value):
+        self.radius_bottom = value
 
     def set_xmin(self, value):
         self.x_min = value
@@ -177,6 +204,8 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
+        self.delta = 0
+
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
         self.mirror2_screw_x = 0
@@ -225,6 +254,8 @@ class InterfEnv(gym.Env):
             self.mirror2_screw_x = np.clip(self.mirror2_screw_x + normalized_step_length, -1, 1)
         elif action == 3:
             self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
+        elif action == 4:
+            self.delta = np.clip(self.delta + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
@@ -233,6 +264,8 @@ class InterfEnv(gym.Env):
         assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
         assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
         assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
+
+        self.calc_r_curvature(self.delta)
 
         mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.far_mirror_max_screw_value
         mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.far_mirror_max_screw_value
@@ -372,9 +405,9 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
-            wave_vector2, center2, self.radius, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
-            InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
+            wave_vector1, center1, self.radius_up, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
+            wave_vector2, center2, self.radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
+            self.r_curvature, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
