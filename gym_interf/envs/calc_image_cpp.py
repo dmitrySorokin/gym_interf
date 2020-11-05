@@ -56,8 +56,8 @@ def calc_image(
         start, end, n_points,
         to_double_pointer(wave_vector1), to_double_pointer(center1), radius1, beam1_mask, length1, n_pixels1, sigma1x, sigma1y, beam1_ampl, beam1_rotation,
         to_double_pointer(wave_vector2), to_double_pointer(center2), radius2, beam2_mask, length2, n_pixels2, sigma2x, sigma2y, beam2_ampl, beam2_rotation,
-        r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf,
-        noise_coef, n_threads, image, total_intens
+        r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf, noise_coef,
+        n_threads, image, total_intens
     )
 
     result = np.ctypeslib.as_array(image)

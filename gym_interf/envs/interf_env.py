@@ -17,7 +17,6 @@ class InterfEnv(gym.Env):
     n_frames = 16
     n_actions = 5
 
-
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_step = 0.52 * 1e-6
     far_mirror_max_screw_value = one_step * 5000
@@ -54,6 +53,7 @@ class InterfEnv(gym.Env):
 
     done_visibility = 0.9999
 
+
     def __init__(self):
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -68,9 +68,12 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius1 = 0.957
-        self.radius2 = 0.957 * self.f2 / self.f1
-        self.r_curvature = self.f2 ** 2 / (25 * self.delta)
+
+        self.radius_up = 0.957
+        self.radius_bottom = 0.957 * self.f2 / self.f1
+
+        self.r_curvature = self.f2 ** 2 / 0.001
+
         self.max_steps = 200
 
         self.beam1_mask = None
@@ -100,13 +103,16 @@ class InterfEnv(gym.Env):
         self.delta = value
 
     def calc_r_curvature(self, value):  # value here is delta
-        self.r_curvature = self.f2 ** 2 / (25 * value)
+        if value != 0:
+            self.r_curvature = self.f2 ** 2 / (25 * value)
+        else:
+            self.r_curvature = 9999999
 
-    def set_radius1(self, value):
-        self.radius1 = value
+    def set_radius_up(self, value):
+        self.radius_up = value
 
-    def set_radius2(self, value):
-        self.radius2 = value
+    def set_radius_bottom(self, value):
+        self.radius_bottom = value
 
     def set_xmin(self, value):
         self.x_min = value
@@ -126,6 +132,7 @@ class InterfEnv(gym.Env):
         self.beam1_sigmay = 1.0 * np.sqrt(value)
         self.beam2_sigmax = self.beam1_sigmax
         self.beam2_sigmay = self.beam1_sigmay
+
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -196,6 +203,8 @@ class InterfEnv(gym.Env):
         self.info = {}
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
+
+        self.delta = 0
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -386,21 +395,19 @@ class InterfEnv(gym.Env):
         band_width = min(band_width_x, band_width_y)
         cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        has_interf = True  # band_width > 4 * cell_size
+        has_interf = True#band_width > 4 * cell_size
 
-        # print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
+        #print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
-        # print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
+        #print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
         #    band_width_x, band_width_y, cell_size, has_interf)
-        # )
+        #)
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius1, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
-            self.beam1_rotation,
-            wave_vector2, center2, self.radius2, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0,
-            self.beam2_rotation, self.r_curvature,
-            InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
+            wave_vector1, center1, self.radius_up, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
+            wave_vector2, center2, self.radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
+            self.r_curvature, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
