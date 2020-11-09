@@ -38,14 +38,14 @@ class InterfEnv(gym.Env):
     c = 100
 
     # focuses of lenses (in mm)
-    f1 = 100
-    f2 = 200
+    f1 = 6
+    f2 = 9
 
     # distance between lenses
     # lens_dist = 305
     # delta = distance - f2 - f2
 
-    delta = 0.1  # from -1 to 1, 1 is 0.1 mm
+    delta = 0.1  # from -1 to 1, 1 is 50 mm
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
@@ -72,7 +72,7 @@ class InterfEnv(gym.Env):
         self.radius_up = 0.957
         self.radius_bottom = 0.957 * self.f2 / self.f1
 
-        self.r_curvature = self.f2 ** 2 / 0.01
+        self.r_curvature = self.f2 ** 2 / 5
 
         self.max_steps = 200
 
@@ -104,7 +104,7 @@ class InterfEnv(gym.Env):
 
     def calc_r_curvature(self, value):  # value here is delta
         if value != 0:
-            self.r_curvature = self.f2 ** 2 / (value / 10)
+            self.r_curvature = self.f2 ** 2 / (50*value)
         else:
             self.r_curvature = float('inf')
 
