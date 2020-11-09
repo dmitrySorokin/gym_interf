@@ -45,7 +45,7 @@ class InterfEnv(gym.Env):
     # lens_dist = 305
     # delta = distance - f2 - f2
 
-    delta = 0.001 / 25  # from -1 to 1, 1 is 25 mm
+    delta = 0.1  # from -1 to 1, 1 is 0.1 mm
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
@@ -72,7 +72,7 @@ class InterfEnv(gym.Env):
         self.radius_up = 0.957
         self.radius_bottom = 0.957 * self.f2 / self.f1
 
-        self.r_curvature = self.f2 ** 2 / 0.001
+        self.r_curvature = self.f2 ** 2 / 0.01
 
         self.max_steps = 200
 
@@ -104,9 +104,9 @@ class InterfEnv(gym.Env):
 
     def calc_r_curvature(self, value):  # value here is delta
         if value != 0:
-            self.r_curvature = self.f2 ** 2 / (25 * value)
+            self.r_curvature = self.f2 ** 2 / (value / 10)
         else:
-            self.r_curvature = 9999999
+            self.r_curvature = float('inf')
 
     def set_radius_up(self, value):
         self.radius_up = value
@@ -172,7 +172,9 @@ class InterfEnv(gym.Env):
             (ord('i'),): 4,
             (ord('k'),): 5,
             (ord('j'),): 6,
-            (ord('l'),): 7
+            (ord('l'),): 7,
+            (ord('n'),): 8,
+            (ord('m'),): 9
         }
 
     def seed(self, seed=None):
