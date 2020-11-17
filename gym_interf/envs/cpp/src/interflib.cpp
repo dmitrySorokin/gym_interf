@@ -89,7 +89,7 @@ void calcImage(
             const int nPixelsY = clipPixels((y - center2[1]) / step2 + nPoints2 / 2);
             double ampl = beamImage2[nPixelsX * nPoints2 + nPixelsY];
 
-            return  Wave{ampl * amplNoise() * beam2Ampl, z * k + (x*x + y*y)/  (r_curvature * r_curvature)};
+            return  Wave{ampl * amplNoise() * beam2Ampl, z * k + (x * x + y * y) /  (r_curvature * r_curvature)};
         }
 
         // rotation

@@ -39,16 +39,14 @@ class InterfEnv(gym.Env):
 
     # focuses of lenses (in mm)
     f1 = 6
-    f2 = 9
-
-    # distance between lenses
-    reduced_lens_dist = 0.1  # is (real lens dist - f1 - f2)/100
+    f2 = 6
+    lense_mount_max_screw_value = 100
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
     mirror2_x_rotation_angle = -pi / 4
 
-    done_visibility = 0.9999 * 4 * (f2/f1)**2/((f2/f1)**2 + 1)**2
+    done_visibility = 0.9999 * 4 * (f2 / f1) ** 2 / ((f2 / f1) ** 2 + 1) ** 2
 
 
     def __init__(self):
@@ -65,10 +63,7 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-
         self.radius = 0.957
-
-
         self.max_steps = 200
 
         self.beam1_mask = None
@@ -94,18 +89,15 @@ class InterfEnv(gym.Env):
         self.x_min = -3.57 / 2
         self.x_max = 3.57 / 2
 
-    def set_lens_dist(self, value):
-        self.delta = value
+        # distance between lenses
+        # reduced_lens_dist = ((lens_dist - f1 - f2) / lense_mount_max_screw_value - 0.5) / 2
+        self.reduced_lens_dist = None
 
-    def calc_r_curvature(self, value):  # value here is delta
-        if value != 0:
-            return self.f2 ** 2 / (100*value)
-        else:
-            return float('inf')
+    def set_lens_dist(self, value):
+        self.reduced_lens_dist = value
 
     def set_radius(self, value):
         self.radius = value
-
 
     def set_xmin(self, value):
         self.x_min = value
@@ -199,7 +191,7 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
-        self.delta = 0
+        self.reduced_lens_dist = -1
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -232,6 +224,12 @@ class InterfEnv(gym.Env):
         else:
             return None
 
+    def _calc_r_curvature(self, lense_dist):
+        # [-1, 1] to [0, 1]
+        lense_dist = (lense_dist + 1) / 2
+        lense_dist = max(lense_dist, 1e-9)
+        return self.f2 ** 2 / (InterfEnv.lense_mount_max_screw_value * lense_dist)
+
     def _take_action(self, action, normalized_step_length):
         """
         0 - do nothing
@@ -259,7 +257,6 @@ class InterfEnv(gym.Env):
         assert abs(self.mirror1_screw_y) <= 1, self.mirror1_screw_y
         assert abs(self.mirror2_screw_x) <= 1, self.mirror2_screw_x
         assert abs(self.mirror2_screw_y) <= 1, self.mirror2_screw_y
-
 
         mirror1_screw_x_value = self.mirror1_screw_x * InterfEnv.far_mirror_max_screw_value
         mirror1_screw_y_value = self.mirror1_screw_y * InterfEnv.far_mirror_max_screw_value
@@ -389,7 +386,9 @@ class InterfEnv(gym.Env):
         band_width = min(band_width_x, band_width_y)
         cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        r_curvature = self.calc_r_curvature(self.reduced_lens_dist)
+        r_curvature = self._calc_r_curvature(self.reduced_lens_dist)
+        self.info['r_curvature'] = r_curvature
+        self.info['reduced_lens_dist'] = self.reduced_lens_dist
 
         radius_up = self.radius
         radius_bottom = self.radius * self.f2 / self.f1
