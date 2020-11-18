@@ -3,3 +3,4 @@ __pycache__/
 gym_interf.egg-info
 build
 install
+gym_interf/envs/libs/include/
