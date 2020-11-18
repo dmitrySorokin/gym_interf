@@ -26,7 +26,7 @@ class InterfEnv(gym.Env):
     reward_range = (0, 1)
 
     observation_space = gym.spaces.Box(low=0, high=255, shape=(n_frames, n_points, n_points), dtype=np.uint8)
-    action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float64)
+    action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float32)
 
     # in mm
     lamb = 6.35 * 1e-4
