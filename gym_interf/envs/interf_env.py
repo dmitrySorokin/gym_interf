@@ -90,11 +90,11 @@ class InterfEnv(gym.Env):
         self.x_max = 3.57 / 2
 
         # distance between lenses
-        # reduced_lens_dist = ((lens_dist - f1 - f2) / lense_mount_max_screw_value - 0.5) / 2
-        self.reduced_lens_dist = None
+        # reduced_lense_dist = ((lens_dist - f1 - f2) / lense_mount_max_screw_value - 0.5) / 2
+        self.reduced_lense_dist = None
 
     def set_lens_dist(self, value):
-        self.reduced_lens_dist = value
+        self.reduced_lense_dist = value
 
     def set_radius(self, value):
         self.radius = value
@@ -191,7 +191,7 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
-        self.reduced_lens_dist = -1
+        self.reduced_lense_dist = -1
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -248,7 +248,7 @@ class InterfEnv(gym.Env):
         elif action == 3:
             self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         elif action == 4:
-            self.reduced_lens_dist = np.clip(self.reduced_lens_dist + normalized_step_length, -1, 1)
+            self.reduced_lense_dist = np.clip(self.reduced_lense_dist + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
@@ -386,9 +386,9 @@ class InterfEnv(gym.Env):
         band_width = min(band_width_x, band_width_y)
         cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        r_curvature = self._calc_r_curvature(self.reduced_lens_dist)
+        r_curvature = self._calc_r_curvature(self.reduced_lense_dist)
         self.info['r_curvature'] = r_curvature
-        self.info['reduced_lens_dist'] = self.reduced_lens_dist
+        self.info['reduced_lense_dist'] = self.reduced_lense_dist
 
         radius_up = self.radius
         radius_bottom = self.radius * self.f2 / self.f1
