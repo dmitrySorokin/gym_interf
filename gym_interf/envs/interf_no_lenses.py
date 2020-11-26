@@ -4,7 +4,6 @@ import numpy as np
 from .interf_env import InterfEnv
 
 
-
 class InterfNoLenses(InterfEnv):
     n_actions = 4
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float32)

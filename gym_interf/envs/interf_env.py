@@ -7,7 +7,7 @@ import time as tm
 from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
-from .utils import reflect, project, rotate_x, rotate_y, dist, angle_between
+from .utils import reflect, project, rotate_x, dist, angle_between, visibility
 from .domain_randomizer import DomainRandomizer
 from .exp_state_provider import ExpStateProvider
 
@@ -38,16 +38,15 @@ class InterfEnv(gym.Env):
     c = 100
 
     # focuses of lenses (in mm)
-    f1 = 6
-    f2 = 6
-    lense_mount_max_screw_value = 100
+    f1 = 50
+    f2 = 50
+    lense_mount_max_screw_value = 10
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
     mirror2_x_rotation_angle = -pi / 4
 
-    done_visibility = 0.9999 * 4 * (f2 / f1) ** 2 / ((f2 / f1) ** 2 + 1) ** 2
-
+    done_visibility = 0.9999
 
     def __init__(self):
         self.mirror1_screw_x = 0
@@ -64,7 +63,7 @@ class InterfEnv(gym.Env):
         self.noise_coef = 0
         self.backward_frames = 4
         self.radius = 0.957
-        self.max_steps = 200
+        self.max_steps = 100
 
         self.beam1_mask = None
         self.beam2_mask = None
@@ -117,7 +116,6 @@ class InterfEnv(gym.Env):
         self.beam1_sigmay = 1.0 * np.sqrt(value)
         self.beam2_sigmax = self.beam1_sigmax
         self.beam2_sigmay = self.beam1_sigmay
-
 
     def set_calc_reward(self, method):
         if method == 'visib_minus_1':
@@ -178,9 +176,12 @@ class InterfEnv(gym.Env):
             self._take_action(action_id, action_value)
 
         center1, wave_vector1, center2, wave_vector2, self.angle = self._calc_centers_and_wave_vectors()
-        self.state, tot_intens = self._calc_state(center1, wave_vector1, center2, wave_vector2)
+        proj_1, proj_2, self.dist = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        self.info['proj_1'] = proj_1
+        self.info['proj_2'] = proj_2
+        self.info['dist'] = self.dist
 
-        self.dist = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+        self.state, tot_intens = self._calc_state(center1, wave_vector1, proj_1, center2, wave_vector2, proj_2)
         reward = self._calc_reward(tot_intens)
 
         return self.state, reward, self.game_over(), self.info
@@ -191,7 +192,7 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
-        self.reduced_lense_dist = -1
+        self.reduced_lense_dist = 0
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -205,11 +206,11 @@ class InterfEnv(gym.Env):
             self._take_action(action_id, action_value)
 
         c1, k1, c2, k2, self.angle = self._calc_centers_and_wave_vectors()
-        self.state, tot_intens = self._calc_state(c1, k1, c2, k2)
+        proj_1, proj_2, self.dist = self._calc_projection_distance(c1, k1, c2, k2)
+        self.state, tot_intens = self._calc_state(c1, k1, proj_1, c2, k2, proj_2)
 
         # should be called after self._calc_state()
         self.visib = self._calc_visib(tot_intens)
-        self.dist = self._calc_projection_distance(c1, k1, c2, k2)
 
         return self.state
 
@@ -224,11 +225,29 @@ class InterfEnv(gym.Env):
         else:
             return None
 
-    def _calc_r_curvature(self, lense_dist):
-        # [-1, 1] to [0, 1]
-        lense_dist = (lense_dist + 1) / 2
-        lense_dist = max(lense_dist, 1e-9)
-        return self.f2 ** 2 / (InterfEnv.lense_mount_max_screw_value * lense_dist)
+    def _calc_beam_propagation(self, lense_dist):
+        lense_dist = lense_dist * InterfEnv.lense_mount_max_screw_value
+
+        def free_space(length):
+            return np.array([[1, length], [0, 1]])
+
+        def lense(focal_length):
+            return np.array([[1, 0], [-1 / focal_length, 1]])
+
+        dist_between_lenses = self.f1 + self.f2 + lense_dist
+        dist_to_camera = self.c + self.a + self.b - dist_between_lenses
+        abcd_matrix = \
+            free_space(dist_to_camera) @ \
+            lense(self.f2) @ \
+            free_space(dist_between_lenses) @ \
+            lense(self.f1)
+        inv_q = -1j * self.lamb / (np.pi * self.radius ** 2)
+        inv_q_prime = (abcd_matrix[1][0] + abcd_matrix[1][1] * inv_q) / (abcd_matrix[0][0] + abcd_matrix[0][1] * inv_q)
+
+        curvature_radius = 1 / (np.real(inv_q_prime) + 1e-9)
+        beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
+
+        return beam_radius, curvature_radius
 
     def _take_action(self, action, normalized_step_length):
         """
@@ -314,11 +333,7 @@ class InterfEnv(gym.Env):
         proj_2 = project(center2, wave_vector2, projection_plane_normal, projection_plane_center)
         distance = dist(proj_1, proj_2)
 
-        self.info['proj_1'] = proj_1
-        self.info['proj_2'] = proj_2
-        self.info['dist'] = distance
-
-        return distance
+        return proj_1, proj_2, distance
 
     def _calc_reward_visib_minus_1(self, tot_intens):
         self.visib = self._calc_visib(tot_intens)
@@ -369,7 +384,7 @@ class InterfEnv(gym.Env):
         return self.visib > InterfEnv.done_visibility or \
                self.n_steps >= self.max_steps
 
-    def _calc_state(self, center1, wave_vector1, center2, wave_vector2):
+    def _calc_state(self, center1, wave_vector1, proj_1, center2, wave_vector2, proj_2):
         if self._use_exp_data:
             state, tot_intens, handles = self._exp_state_provider.get_state()
             self.mirror1_screw_x, self.mirror1_screw_y, self.mirror2_screw_x, self.mirror2_screw_y = handles
@@ -381,31 +396,34 @@ class InterfEnv(gym.Env):
 
         tstart = tm.time()
 
-        band_width_x = InterfEnv.lamb / abs(wave_vector2[0])
-        band_width_y = InterfEnv.lamb / abs(wave_vector2[1])
-        band_width = min(band_width_x, band_width_y)
-        cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
+        # band_width_x = InterfEnv.lamb / abs(wave_vector2[0])
+        # band_width_y = InterfEnv.lamb / abs(wave_vector2[1])
+        # band_width = min(band_width_x, band_width_y)
+        # cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        r_curvature = self._calc_r_curvature(self.reduced_lense_dist)
-        self.info['r_curvature'] = r_curvature
+        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lense_dist)
+        self.info['r_curvature'] = curvature_radius
         self.info['reduced_lense_dist'] = self.reduced_lense_dist
+        self.info['radius_bottom'] = radius_bottom
 
-        radius_up = self.radius
-        radius_bottom = self.radius * self.f2 / self.f1
+        kvector = wave_vector2 * 2 * np.pi / self.lamb
+        self.info['visib_device'] = visibility(
+            self.radius, radius_bottom, curvature_radius,
+            proj_2[0], proj_2[1], kvector[0], kvector[1])
 
-        has_interf = True#band_width > 4 * cell_size
+        has_interf = True #band_width > 4 * cell_size
 
-        #print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
+        # print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
-        #print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
-        #    band_width_x, band_width_y, cell_size, has_interf)
-        #)
+        # print('band_width_x = {}, band_width_y = {}, cell_size = {}, interf = {}'.format(
+        #     band_width_x, band_width_y, cell_size, has_interf)
+        # )
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, radius_up, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, 1.0, self.beam2_rotation,
-            r_curvature, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
+            curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
