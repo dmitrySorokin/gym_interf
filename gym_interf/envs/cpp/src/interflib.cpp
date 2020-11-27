@@ -89,7 +89,8 @@ void calcImage(
             const int nPixelsY = clipPixels((y - center2[1]) / step2 + nPoints2 / 2);
             double ampl = beamImage2[nPixelsX * nPoints2 + nPixelsY];
 
-            return  Wave{ampl * amplNoise() * beam2Ampl, z * k + (x * x + y * y) /  (r_curvature * r_curvature)};
+            // TODO add lense here
+            return  Wave{ampl * amplNoise() * beam2Ampl, z * k};
         }
 
         // rotation
@@ -99,7 +100,7 @@ void calcImage(
         const double yCenterPrime = center2[0] * sinBeam2Rot + center2[1] * cosBeam2Rot;
 
         const double r2 = sigma2x * (xPrime - xCenterPrime) * (xPrime - xCenterPrime) + sigma2y * (yPrime - yCenterPrime) * (yPrime - yCenterPrime);
-    	return Wave{std::exp(-r2 / (radius2 * radius2)) * amplNoise() * beam2Ampl, z * k  + r2  / (r_curvature * r_curvature)};
+    	return Wave{std::exp(-r2 / (radius2 * radius2)) * amplNoise() * beam2Ampl, z * k  + 0.5 * k * r2  / r_curvature};
     	//return Wave{beam2Ampl * (r2 <= radius2 * radius2), z * k};
     };
 
