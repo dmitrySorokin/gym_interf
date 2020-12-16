@@ -35,7 +35,8 @@ void calcImage(
     std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
     std::uniform_real_distribution<> amplDistrib(0.0, 0.2);
 
-    const double maxIntens = beam1Ampl * beam1Ampl + beam2Ampl * beam2Ampl + 2 * beam1Ampl * beam2Ampl;
+    // const double maxIntens = beam1Ampl * beam1Ampl + beam2Ampl * beam2Ampl + 2 * beam1Ampl * beam2Ampl;
+    const double maxIntens = 4;
 
     auto noise = [&]() {
         return distrib(generator);
@@ -167,10 +168,9 @@ void calcImage(
                 ampl2[k], 
                 deltaPhase[k] - omega * time
             );
-
-            const double intensWithNoise =
-                (255.0 * intens / maxIntens + noise()) / (255.0 + noiseCoeff) * 255.0;
-            img[k] = static_cast<uint8_t>(intensWithNoise);
+            const double rescaledIntens = std::min(intens / maxIntens, 1.0);
+            const double intensWithNoise = (rescaledIntens + noise()) / (1 + noiseCoeff);
+            img[k] = static_cast<uint8_t>(255 * intensWithNoise);
             integIntens += intens;
         }
     };

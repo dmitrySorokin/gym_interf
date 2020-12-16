@@ -154,10 +154,3 @@ def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky):
     exp2 = np.exp(-r2 * n2 / (4 * (n2 + 1)) * (kx ** 2 + ky ** 2))
     exp3 = np.exp(-r2 * factor / r_curvature ** 2 * (x * kx + y * ky))
     return 4 * factor * exp1 * exp2 * exp3
-
-
-if __name__ == '__main__':
-    v = np.array([0, 0, 1])
-    axis = np.array([0, 1, -1])
-    result = reflect(v, axis)
-    print(result)
