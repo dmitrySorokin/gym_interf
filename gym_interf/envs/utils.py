@@ -145,12 +145,25 @@ def dist(a, b):
     return np.linalg.norm(a-b)
 
 
-def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky):
+def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
     n = radius_bottom / radius_top
     n2 = n * n
     r2 = radius_top ** 2
-    factor = n2 / (n2 + 1) ** 2
-    exp1 = np.exp(-(x ** 2 + y ** 2) / r2 * (1 - 1 / (n2 * (n2 + 1))))
-    exp2 = np.exp(-r2 * n2 / (4 * (n2 + 1)) * (kx ** 2 + ky ** 2))
-    exp3 = np.exp(-r2 * factor / r_curvature ** 2 * (x * kx + y * ky))
-    return 4 * factor * exp1 * exp2 * exp3
+    c2 = ((n2 + 1) / (n2 * r2)) ** 2 + (np.pi / (lamb * r_curvature)) ** 2
+
+    exp1 = np.exp(
+        -(x ** 2 + y ** 2) *
+        (1 / (r2 * n2) - (n2 + 1) / (n2 ** 3 * r2 ** 3 * c2))
+    )
+
+    exp2 = np.exp(
+        -(kx ** 2 + ky ** 2) *
+        (n2 + 1) / (4 * c2 * n2 * r2)
+    )
+
+    exp3 = np.exp(
+        (x * kx + y * ky) *
+        np.pi / (lamb * r_curvature * n2 * r2 * c2)
+    )
+
+    return 4 / ((n2 + 1) * r2 * np.sqrt(c2)) * exp1 * exp2 * exp3

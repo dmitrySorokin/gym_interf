@@ -229,6 +229,9 @@ class InterfEnv(gym.Env):
     def _calc_beam_propagation(self, lens_dist):
         lens_dist = lens_dist * InterfEnv.lens_mount_max_screw_value
 
+        if lens_dist == 0:
+            lens_dist = 1e-6
+
         def free_space(length):
             return np.array([[1, length], [0, 1]])
 
@@ -248,7 +251,17 @@ class InterfEnv(gym.Env):
         curvature_radius = 1 / (np.real(inv_q_prime) + 1e-9)
         beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
 
-        return beam_radius, curvature_radius
+        curvature_radius_eq = dist_to_camera - self.f2 ** 2 / lens_dist - self.f2
+
+        beam_radius_eq = np.abs(
+            lens_dist *
+            (dist_to_camera / (self.f1 * self.f2) - 1.0 / self.f1)
+            - self.f2 / self.f1
+        ) * self.radius
+
+        # TODO explain difference between
+        #  beam_radius / beam_radius_eq and curvature_radius / curvature_radius_eq
+        return beam_radius_eq, curvature_radius_eq
 
     def _take_action(self, action, normalized_step_length):
         """
@@ -411,7 +424,7 @@ class InterfEnv(gym.Env):
         kvector = wave_vector2 * 2 * np.pi / self.lamb
         self.info['visib_device'] = visibility(
             self.radius, radius_bottom, curvature_radius,
-            proj_2[0], proj_2[1], kvector[0], kvector[1])
+            proj_2[0], proj_2[1], kvector[0], kvector[1], self.lamb)
 
         has_interf = True #band_width > 4 * cell_size
 
