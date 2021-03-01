@@ -40,8 +40,8 @@ class InterfEnv(gym.Env):
     # focuses of lenses (in mm)
     f1 = 50
     f2 = 50
-    one_lens_step = 12 * 1e-6
-    lens_mount_max_screw_value = 1000000 * one_lens_step
+    one_lens_step = 1.25 * 1e-3
+    lens_mount_max_screw_value = 6000 * one_lens_step
 
     # initial normals
     mirror1_x_rotation_angle = 3 * pi / 4
