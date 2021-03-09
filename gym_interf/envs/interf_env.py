@@ -63,7 +63,7 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.957
+        self.radius = 0.714 
         self.max_steps = 100
 
         self.beam1_mask = None
