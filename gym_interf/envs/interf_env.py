@@ -15,7 +15,7 @@ from .exp_state_provider import ExpStateProvider
 class InterfEnv(gym.Env):
     n_points = 64
     n_frames = 16
-    n_actions = 5
+    n_actions = 6
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_mirror_step = 0.52 * 1e-6
@@ -37,9 +37,11 @@ class InterfEnv(gym.Env):
     b = 300
     c = 100
 
+    dist_between_telescope = 100
+
     # focuses of lenses (in mm)
     f1 = 50
-    f2 = 50
+    f2 = 100
     one_lens_step = 1.25 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
 
@@ -63,7 +65,8 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.714 
+        self.radius = 0.714
+        self.base_r_curvature = 766
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -91,7 +94,8 @@ class InterfEnv(gym.Env):
 
         # distance between lenses
         # reduced_lens_dist = ((lens_dist - f1 - f2) / lens_mount_max_screw_value - 0.5) / 2
-        self.reduced_lens_dist = None
+        self.reduced_lens_dist1 = None
+        self.reduced_lens_dist2 = None
 
     def set_lens_dist(self, value):
         self.reduced_lens_dist = value
@@ -157,8 +161,10 @@ class InterfEnv(gym.Env):
             (ord('k'),): 5,
             (ord('j'),): 6,
             (ord('l'),): 7,
-            (ord('n'),): 8,
-            (ord('m'),): 9
+            (ord('m'),): 8,
+            (ord('n'),): 9,
+            (ord('b'),): 10,
+            (ord('v'),): 11
         }
 
     def seed(self, seed=None):
@@ -193,8 +199,8 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
-        self.reduced_lens_dist = 0
-
+        self.reduced_lens_dist1 = 0
+        self.reduced_lens_dist2 = 0
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
         self.mirror2_screw_x = 0
@@ -226,11 +232,15 @@ class InterfEnv(gym.Env):
         else:
             return None
 
-    def _calc_beam_propagation(self, lens_dist):
-        lens_dist = lens_dist * InterfEnv.lens_mount_max_screw_value
+    def _calc_beam_propagation(self, lens_dist1, lens_dist2):
+        lens_dist1 = lens_dist1 * InterfEnv.lens_mount_max_screw_value
+        lens_dist2 = lens_dist2 * InterfEnv.lens_mount_max_screw_value
 
-        if lens_dist == 0:
-            lens_dist = 1e-6
+        if lens_dist1 == 0:
+            lens_dist2 = 1e-6
+
+        if lens_dist2 == 0:
+            lens_dist2 = 1e-6
 
         def free_space(length):
             return np.array([[1, length], [0, 1]])
@@ -238,9 +248,10 @@ class InterfEnv(gym.Env):
         def lense(focal_length):
             return np.array([[1, 0], [-1 / focal_length, 1]])
 
-        dist_between_lenses = self.f1 + self.f2 + lens_dist
-        dist_to_camera = self.c + self.a + self.b - dist_between_lenses
-        abcd_matrix = \
+        dist_between_lenses1 = 2 * self.f1 + lens_dist1
+        dist_between_lenses2 = 2 * self.f2 + lens_dist2
+        dist_to_camera = self.c + self.a + self.b - dist_between_lenses1 - dist_between_lenses2 - self.dist_between_telescope
+        """abcd_matrix = \
             free_space(dist_to_camera) @ \
             lense(self.f2) @ \
             free_space(dist_between_lenses) @ \
@@ -249,15 +260,22 @@ class InterfEnv(gym.Env):
         inv_q_prime = (abcd_matrix[1][0] + abcd_matrix[1][1] * inv_q) / (abcd_matrix[0][0] + abcd_matrix[0][1] * inv_q)
 
         curvature_radius = 1 / (np.real(inv_q_prime) + 1e-9)
-        beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
+        beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)"""
 
-        curvature_radius_eq = dist_to_camera - self.f2 ** 2 / lens_dist - self.f2
+        curvature_radius_eq = ((self.f2 ** 2 * (self.f1 ** 2 * (self.dist_between_telescope + dist_to_camera -
+        2 * (self.f1 + self.f2) + self.base_r_curvature) + (self.dist_between_telescope + dist_to_camera - self.f1 - 2 * self.f2)*(self.f1 - self.base_r_curvature)
+        * lens_dist1) + (self.f2 - dist_to_camera) * (self.f1**2 * (self.dist_between_telescope - 2 * self.f2 - self.f1 + self.base_r_curvature) +
+        (self.dist_between_telescope - self.f1 - self.f2) * (self.f1 - self.base_r_curvature) * lens_dist1) * lens_dist2) /
+        self.f2**2 * (self.f1**2 + self.f1 * lens_dist1 - self.base_r_curvature * lens_dist1) + self.f1**2 * (2 * self.f2 + self.f1 -
+        self.dist_between_telescope - self.base_r_curvature) * lens_dist2 + (self.f1 + self.f2 - self.dist_between_telescope) *(self.f1 - self.base_r_curvature)
+        * lens_dist1 * lens_dist2)
 
-        beam_radius_eq = np.abs(
-            lens_dist *
-            (dist_to_camera / (self.f1 * self.f2) - 1.0 / self.f1)
-            - self.f2 / self.f1
-        ) * self.radius
+
+        beam_radius_eq = np.sqrt((self.f2 ** 2 * (self.f1 ** 2 * (self.dist_between_telescope + dist_to_camera -
+        2 * (self.f1 + self.f2) + self.base_r_curvature) + (self.dist_between_telescope + dist_to_camera - self.f1 - 2 * self.f2)*(self.f1 - self.base_r_curvature)
+        * lens_dist1) + (self.f2 - dist_to_camera) * (self.f1**2 * (self.dist_between_telescope - 2 * self.f2 - self.f1 + self.base_r_curvature) +
+        (self.dist_between_telescope - self.f1 - self.f2) * (self.f1 - self.base_r_curvature) * lens_dist1) * lens_dist2)**2
+        ) / (self.f2**2 * self.f1**2 * self.base_r_curvature) * self.radius
 
         # TODO explain difference between
         #  beam_radius / beam_radius_eq and curvature_radius / curvature_radius_eq
@@ -281,7 +299,9 @@ class InterfEnv(gym.Env):
         elif action == 3:
             self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         elif action == 4:
-            self.reduced_lens_dist = np.clip(self.reduced_lens_dist + normalized_step_length, -1, 1)
+            self.reduced_lens_dist1 = np.clip(self.reduced_lens_dist1 + normalized_step_length, -1, 1)
+        elif action == 5:
+            self.reduced_lens_dist2 = np.clip(self.reduced_lens_dist2 + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
@@ -415,10 +435,12 @@ class InterfEnv(gym.Env):
         # band_width = min(band_width_x, band_width_y)
         # cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lens_dist)
+        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lens_dist1, self.reduced_lens_dist2)
         beam2_amplitude = self.radius / radius_bottom
         self.info['r_curvature'] = curvature_radius
-        self.info['reduced_lens_dist'] = self.reduced_lens_dist
+        self.info['reduced_lens_dist1'] = self.reduced_lens_dist1
+        self.info['reduced_lens_dist2'] = self.reduced_lens_dist2
+
         self.info['radius_bottom'] = radius_bottom
 
         kvector = wave_vector2 * 2 * np.pi / self.lamb
@@ -426,7 +448,7 @@ class InterfEnv(gym.Env):
             self.radius, radius_bottom, curvature_radius,
             proj_2[0], proj_2[1], kvector[0], kvector[1], self.lamb)
 
-        has_interf = True #band_width > 4 * cell_size
+        has_interf = True  # band_width > 4 * cell_size
 
         # print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
@@ -436,9 +458,12 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.x_max, InterfEnv.n_points,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
-            wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
-            curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
+            self.beam1_rotation,
+            wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay,
+            beam2_amplitude, self.beam2_rotation,
+            self.base_r_curvature, curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames,
+            InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
