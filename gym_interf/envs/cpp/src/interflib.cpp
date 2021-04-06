@@ -129,8 +129,8 @@ void calcImage(
 
 	auto worker = [&](int kStart, int kEnd) {
 		for (int k = kStart; k < kEnd; ++k) {
-			int i = k % ypoints;
-			int j = k / ypoints;
+			int i = k / ypoints;
+			int j = k % ypoints;
 			const Vector point = {xstart + i * step, ystart + j * step, 0};
 
 			const Vector source2 = utils::backTrack(point, wave_vector2, center2);
