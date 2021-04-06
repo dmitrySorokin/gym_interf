@@ -20,7 +20,7 @@ struct Wave {
 };
 
 void calcImage(
-		double start, double end, int nPoints,
+		double xstart, double xend, int xpoints, double ystart, double yend, int ypoints,
 		const Vector& wave_vector1, const Vector& center1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2,
@@ -120,18 +120,18 @@ void calcImage(
         return result;
     };
 
-    const int totalPoints = nPoints * nPoints;
+    const int totalPoints = xpoints * ypoints;
     std::vector<double> ampl1(totalPoints);
     std::vector<double> ampl2(totalPoints);
     std::vector<double> deltaPhase(totalPoints);
 
-	const double step = (end - start) / nPoints;
+	const double step = (yend - ystart) / ypoints;
 
 	auto worker = [&](int kStart, int kEnd) {
 		for (int k = kStart; k < kEnd; ++k) {
-			int i = k / nPoints;
-			int j = k - i * nPoints;
-			const Vector point = {start + i * step, start + j * step, 0};
+			int i = k % ypoints;
+			int j = k / ypoints;
+			const Vector point = {xstart + i * step, ystart + j * step, 0};
 
 			const Vector source2 = utils::backTrack(point, wave_vector2, center2);
 	        const double dist2 = utils::dist(point, source2);
@@ -207,7 +207,7 @@ void calcImage(
 
 
 void calc_image(
-		double start, double end, int nPoints,
+		double xstart, double xend, int xpoints, double ystart, double yend, int ypoints,
 		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const double* vector2, const double*  cnt2, double radius2, const double* beamImage2,
@@ -220,9 +220,10 @@ void calc_image(
 	auto center1 = Vector{cnt1[0], cnt1[1], cnt1[2]};
 	auto center2 = Vector{cnt2[0], cnt2[1], cnt2[2]};
 
-	calcImage(start, end, nPoints,
-		wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y, beam1Ampl, beam1Rotation,
-		wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y, beam2Ampl, beam2Rotation,
-		r_curvature, nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
-		noiseCoeff, nThreads, image, totIntens);
+    calcImage(
+        xstart, xend, xpoints, ystart, yend, ypoints,
+        wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y, beam1Ampl, beam1Rotation,
+        wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y, beam2Ampl, beam2Rotation,
+        r_curvature, nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
+        noiseCoeff, nThreads, image, totIntens);
 }

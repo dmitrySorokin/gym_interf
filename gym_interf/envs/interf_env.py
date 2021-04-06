@@ -47,6 +47,9 @@ class InterfEnv(gym.Env):
     mirror1_x_rotation_angle = 3 * pi / 4
     mirror2_x_rotation_angle = -pi / 4
 
+    # camera matrix size (in mm)
+    camera_size = 3.57
+
     done_visibility = 0.9999
 
     def __init__(self):
@@ -86,8 +89,10 @@ class InterfEnv(gym.Env):
         self._use_exp_data = False
 
         # image min & max coords
-        self.x_min = -3.57 / 2
-        self.x_max = 3.57 / 2
+        self.x_min = -InterfEnv.camera_size / 2
+        self.x_max = InterfEnv.camera_size / 2
+        self.y_min = -InterfEnv.camera_size / 2
+        self.y_max = InterfEnv.camera_size / 2
 
         # distance between lenses
         # reduced_lens_dist = ((lens_dist - f1 - f2) / lens_mount_max_screw_value - 0.5) / 2
@@ -99,14 +104,11 @@ class InterfEnv(gym.Env):
     def set_radius(self, value):
         self.radius = value
 
-    def set_xmin(self, value):
-        self.x_min = value
-
-    def set_xmax(self, value):
-        self.x_max = value
-
-    def set_max_steps(self, value):
-        self.max_steps = value
+    def shift_camera_position(self, delta_x, delta_y):
+        self.x_min = (-0.5 + delta_x) * InterfEnv.camera_size
+        self.x_max = (0.5 + delta_x) * InterfEnv.camera_size
+        self.y_min = (-0.5 + delta_y) * InterfEnv.camera_size
+        self.y_max = (0.5 + delta_y) * InterfEnv.camera_size
 
     def set_beam_rotation(self, value):
         self.beam1_rotation = value
@@ -435,7 +437,7 @@ class InterfEnv(gym.Env):
         # )
 
         state = self._calc_image(
-            self.x_min, self.x_max, InterfEnv.n_points,
+            self.x_min, self.x_max, InterfEnv.n_points, self.y_min, self.y_max, InterfEnv.n_points,
             wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
