@@ -436,8 +436,10 @@ class InterfEnv(gym.Env):
         #     band_width_x, band_width_y, cell_size, has_interf)
         # )
 
+        pixel_size = (self.y_max - self.y_min) / InterfEnv.n_points
+
         state = self._calc_image(
-            self.x_min, self.x_max, InterfEnv.n_points, self.y_min, self.y_max, InterfEnv.n_points,
+            self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
             wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,

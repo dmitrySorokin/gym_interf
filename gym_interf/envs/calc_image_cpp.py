@@ -21,7 +21,7 @@ def lib_path():
 libc = cdll.LoadLibrary(lib_path())
 
 libc.calc_image.argtypes = [
-    c_double, c_double, c_int, c_double, c_double, c_int,
+    c_double, c_double, c_int, c_int, c_double,
     POINTER(c_double), POINTER(c_double), c_double, POINTER(c_double), c_double, c_int, c_double, c_double, c_double, c_double,
     POINTER(c_double), POINTER(c_double), c_double, POINTER(c_double), c_double, c_int, c_double, c_double, c_double, c_double,
     c_double, c_int, c_int, c_double, c_double, c_bool, c_double,
@@ -30,7 +30,7 @@ libc.calc_image.argtypes = [
 
 
 def calc_image(
-        xstart, xend, xpoints, ystart, yend, ypoints,
+        xstart, ystart, xpoints, ypoints, pixel_size,
         wave_vector1, center1, radius1, beam1_mask, length1, n_pixels1, sigma1x, sigma1y, beam1_ampl, beam1_rotation,
         wave_vector2, center2, radius2, beam2_mask, length2, n_pixels2, sigma2x, sigma2y, beam2_ampl, beam2_rotation,
         r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf,
@@ -53,7 +53,7 @@ def calc_image(
         beam2_mask = None
 
     libc.calc_image(
-        xstart, xend, xpoints, ystart, yend, ypoints,
+        xstart, ystart, xpoints, ypoints, pixel_size,
         to_double_pointer(wave_vector1), to_double_pointer(center1), radius1, beam1_mask, length1, n_pixels1, sigma1x, sigma1y, beam1_ampl, beam1_rotation,
         to_double_pointer(wave_vector2), to_double_pointer(center2), radius2, beam2_mask, length2, n_pixels2, sigma2x, sigma2y, beam2_ampl, beam2_rotation,
         r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf, noise_coef,

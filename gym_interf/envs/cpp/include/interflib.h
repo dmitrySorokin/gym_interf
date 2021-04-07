@@ -5,7 +5,7 @@
 
 extern "C" {
 	EXPORT void calc_image(
-		double xstart, double xend, int xpoints, double ystart, double yend, int ypoints,
+		double xstart, double ystart, int xpoints, int ypoints, double pixel_size,
 		const double*  waveVector1, const double*  center1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const double*  waveVector2, const double*  center2, double radius2, const double* beamImage2,
