@@ -66,7 +66,8 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.714 
+        self.radius = 0.714
+        self.base_r_curvature = 766
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -253,13 +254,13 @@ class InterfEnv(gym.Env):
         curvature_radius = 1 / (np.real(inv_q_prime) + 1e-9)
         beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
 
-        curvature_radius_eq = dist_to_camera - self.f2 ** 2 / lens_dist - self.f2
+        curvature_radius_eq = dist_to_camera + self.f2 * (
+                    -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1 ^ 2 + self.f1 * lens_dist))
 
         beam_radius_eq = np.abs(
-            lens_dist *
-            (dist_to_camera / (self.f1 * self.f2) - 1.0 / self.f1)
-            - self.f2 / self.f1
-        ) * self.radius
+            lens_dist * (self.f1 ^ 2 + self.f1 * lens_dist - lens_dist * self.base_r_curvature)
+            - self.f2 * (self.f1 ^ 2 + self.f1 * (self.f2 + lens_dist) - self.base_r_curvature * (self.f2 + lens_dist))
+        ) / (self.f1 * self.f2 * self.base_r_curvature) * self.radius
 
         # TODO explain difference between
         #  beam_radius / beam_radius_eq and curvature_radius / curvature_radius_eq
@@ -428,7 +429,7 @@ class InterfEnv(gym.Env):
             self.radius, radius_bottom, curvature_radius,
             proj_2[0], proj_2[1], kvector[0], kvector[1], self.lamb)
 
-        has_interf = True #band_width > 4 * cell_size
+        has_interf = True  # band_width > 4 * cell_size
 
         # print('band_width / (4 * cells_size)', band_width / (2 * cell_size))
 
@@ -440,9 +441,12 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
-            wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
-            curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
+            self.beam1_rotation,
+            wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay,
+            beam2_amplitude, self.beam2_rotation,
+            curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb,
+            InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
