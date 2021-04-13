@@ -255,11 +255,11 @@ class InterfEnv(gym.Env):
         beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
 
         curvature_radius_eq = dist_to_camera + self.f2 * (
-                    -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1 ^ 2 + self.f1 * lens_dist))
+                    -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1**2 + self.f1 * lens_dist))
 
         beam_radius_eq = np.abs(
-            lens_dist * (self.f1 ^ 2 + self.f1 * lens_dist - lens_dist * self.base_r_curvature)
-            - self.f2 * (self.f1 ^ 2 + self.f1 * (self.f2 + lens_dist) - self.base_r_curvature * (self.f2 + lens_dist))
+            lens_dist * (self.f1**2 + self.f1 * lens_dist - lens_dist * self.base_r_curvature)
+            - self.f2 * (self.f1**2 + self.f1 * (self.f2 + lens_dist) - self.base_r_curvature * (self.f2 + lens_dist))
         ) / (self.f1 * self.f2 * self.base_r_curvature) * self.radius
 
         # TODO explain difference between
