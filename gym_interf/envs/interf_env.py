@@ -66,8 +66,15 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.radius = 0.714
         self.base_r_curvature = 766
+        self.radius = 0.714
+        self.radius_up = np.abs(
+            (self.a + self.b + self.c - self.f1 - self.f2) * self.f1**2
+            - self.f2 * (self.f1**2 + self.f1 * self.f2 - self.base_r_curvature * self.f2)
+        ) / (self.f1 * self.f2 * self.base_r_curvature) * self.radius
+
+        self.r_curvature_up = (self.a + self.b + self.c - self.f1 - self.f2) + self.f2 * (
+                    -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1**2))
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -258,9 +265,10 @@ class InterfEnv(gym.Env):
                     -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1**2 + self.f1 * lens_dist))
 
         beam_radius_eq = np.abs(
-            lens_dist * (self.f1**2 + self.f1 * lens_dist - lens_dist * self.base_r_curvature)
+            dist_to_camera * (self.f1**2 + self.f1 * lens_dist - lens_dist * self.base_r_curvature)
             - self.f2 * (self.f1**2 + self.f1 * (self.f2 + lens_dist) - self.base_r_curvature * (self.f2 + lens_dist))
         ) / (self.f1 * self.f2 * self.base_r_curvature) * self.radius
+
 
         # TODO explain difference between
         #  beam_radius / beam_radius_eq and curvature_radius / curvature_radius_eq
@@ -403,7 +411,7 @@ class InterfEnv(gym.Env):
 
     def _calc_state(self, center1, wave_vector1, proj_1, center2, wave_vector2, proj_2):
         if self._use_exp_data:
-            state, tot_intens, handles = self._exp_state_provider.get_state()
+            state, tot_intens, hand11111les = self._exp_state_provider.get_state()
             self.mirror1_screw_x, self.mirror1_screw_y, self.mirror2_screw_x, self.mirror2_screw_y = handles
             print('-handles', -handles / 5000)
             self.info['state_calc_time'] = 0
@@ -441,8 +449,8 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
-            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
-            self.beam1_rotation,
+            wave_vector1, center1, self.radius_up, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
+            self.beam1_rotation, self.base_r_curvature,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay,
             beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb,
