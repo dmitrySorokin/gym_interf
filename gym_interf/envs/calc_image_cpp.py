@@ -25,16 +25,16 @@ libc.calc_image.argtypes = [
     POINTER(c_double), POINTER(c_double), c_double, POINTER(c_double), c_double, c_int, c_double, c_double, c_double, c_double,
     POINTER(c_double), POINTER(c_double), c_double, POINTER(c_double), c_double, c_int, c_double, c_double, c_double, c_double,
     c_double, c_int, c_int, c_double, c_double, c_bool, c_double,
-    c_int, POINTER(c_uint8), POINTER(c_double)
+    c_int, POINTER(c_uint8), POINTER(c_double), c_double
 ]
 
 
 def calc_image(
-        start, end, n_points,
+        pivotBeamX, pivotBeamY, n_points,
         wave_vector1, center1, radius1, beam1_mask, length1, n_pixels1, sigma1x, sigma1y, beam1_ampl, beam1_rotation,
         wave_vector2, center2, radius2, beam2_mask, length2, n_pixels2, sigma2x, sigma2y, beam2_ampl, beam2_rotation,
         r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf,
-        noise_coef, use_beam_masks, n_threads=1):
+        noise_coef, use_beam_masks, n_threads=8, piezo_std=0):
 
     n_frames = n_forward_frames + n_backward_frames
 
@@ -53,11 +53,11 @@ def calc_image(
         beam2_mask = None
 
     libc.calc_image(
-        start, end, n_points,
+        pivotBeamX, pivotBeamY, n_points,
         to_double_pointer(wave_vector1), to_double_pointer(center1), radius1, beam1_mask, length1, n_pixels1, sigma1x, sigma1y, beam1_ampl, beam1_rotation,
         to_double_pointer(wave_vector2), to_double_pointer(center2), radius2, beam2_mask, length2, n_pixels2, sigma2x, sigma2y, beam2_ampl, beam2_rotation,
         r_curvature, n_forward_frames, n_backward_frames, lamb, omega, has_interf, noise_coef,
-        n_threads, image, total_intens
+        n_threads, image, total_intens, piezo_std
     )
 
     result = np.ctypeslib.as_array(image)

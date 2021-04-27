@@ -20,13 +20,13 @@ struct Wave {
 };
 
 void calcImage(
-		double start, double end, int nPoints,
+		double pivotBeamX, double pivotBeamY, int nPoints,
 		const Vector& wave_vector1, const Vector& center1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2,
         double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,
         double r_curvature, int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
-        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens, double piezoStd)
 {
 
     std::random_device rnd;
@@ -34,6 +34,13 @@ void calcImage(
     std::uniform_real_distribution<> distrib(0, noiseCoeff);
     std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
     std::uniform_real_distribution<> amplDistrib(0.0, 0.2);
+
+    // piezo noise
+    std::normal_distribution<> piezoDistrib{0, piezoStd};
+
+    auto piezoNoise = [&](){
+        return piezoDistrib(generator);
+    };
 
     // const double maxIntens = beam1Ampl * beam1Ampl + beam2Ampl * beam2Ampl + 2 * beam1Ampl * beam2Ampl;
     const double maxIntens = 4;
@@ -57,7 +64,7 @@ void calcImage(
 	const double sinBeam2Rot = sin(beam2Rotation);
 
     auto calcWave1 = [&](double z, double x, double y) {
-        if (beamImage1) {
+            if (beamImage1) {
             const double step1 = length1 / nPoints1;
             auto clipPixels = [&](int value) {
                 return std::min(std::max(0, value), nPoints1 - 1);
@@ -125,13 +132,13 @@ void calcImage(
     std::vector<double> ampl2(totalPoints);
     std::vector<double> deltaPhase(totalPoints);
 
-	const double step = (end - start) / nPoints;
+	const double step = 3.57 / nPoints;
 
 	auto worker = [&](int kStart, int kEnd) {
 		for (int k = kStart; k < kEnd; ++k) {
 			int i = k / nPoints;
 			int j = k - i * nPoints;
-			const Vector point = {start + i * step, start + j * step, 0};
+			const Vector point = {pivotBeamX + i * step, pivotBeamY + j * step, 0};
 
 			const Vector source2 = utils::backTrack(point, wave_vector2, center2);
 	        const double dist2 = utils::dist(point, source2);
@@ -179,7 +186,7 @@ void calcImage(
 
     auto startPhase = rndPhase();
     for (int iFrame = 0; iFrame < nForwardFrames; ++iFrame) {
-        double time = startPhase + 2 * M_PI * iFrame / nForwardFrames;
+        double time = startPhase + 2 * M_PI * iFrame / nForwardFrames + piezoNoise();
         int ind = iFrame * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
@@ -188,8 +195,9 @@ void calcImage(
     }
 
     startPhase = rndPhase();
+//    startPhase + 2 * M_PI * (nForwardFrames- 1) / nForwardFrames;
     for (int iFrame = 0; iFrame < nBackwardFrames; ++iFrame) {
-        double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames);
+        double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames) + piezoNoise();
         int ind = (iFrame + nForwardFrames) * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
@@ -207,22 +215,22 @@ void calcImage(
 
 
 void calc_image(
-		double start, double end, int nPoints,
+		double pivotBeamX, double pivotBeamY, int nPoints,
 		const double* vector1, const double*  cnt1, double radius1, const double* beamImage1,
 		double length1, int nPoints1, double sigma1x, double sigma1y, double beam1Ampl, double beam1Rotation,
         const double* vector2, const double*  cnt2, double radius2, const double* beamImage2,
         double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,
         double r_curvature, int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
-        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens, double piezoStd)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
 	auto wave_vector2 = Vector{vector2[0], vector2[1], vector2[2]};
 	auto center1 = Vector{cnt1[0], cnt1[1], cnt1[2]};
 	auto center2 = Vector{cnt2[0], cnt2[1], cnt2[2]};
 
-	calcImage(start, end, nPoints,
+	calcImage(pivotBeamX, pivotBeamY, nPoints,
 		wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y, beam1Ampl, beam1Rotation,
 		wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y, beam2Ampl, beam2Rotation,
 		r_curvature, nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
-		noiseCoeff, nThreads, image, totIntens);
+		noiseCoeff, nThreads, image, totIntens, piezoStd);
 }

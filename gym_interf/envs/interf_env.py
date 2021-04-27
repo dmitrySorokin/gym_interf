@@ -41,6 +41,7 @@ class InterfEnv(gym.Env):
     f1 = 50
     f2 = 50
     one_lens_step = 1.25 * 1e-3
+    # one_lens_step = 0.7 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
 
     # initial normals
@@ -62,7 +63,10 @@ class InterfEnv(gym.Env):
         self.dist = None
         self.angle = None
         self.noise_coef = 0
+        # self.backward_frames = 4
         self.backward_frames = 4
+        # TODO my randomization
+        self.piezo_std = 0
         self.radius = 0.714 
         self.max_steps = 100
 
@@ -86,8 +90,8 @@ class InterfEnv(gym.Env):
         self._use_exp_data = False
 
         # image min & max coords
-        self.x_min = -3.57 / 2
-        self.x_max = 3.57 / 2
+        self.pivot_beam_x = -3.57 / 2
+        self.pivot_beam_y = -3.57 / 2
 
         # distance between lenses
         # reduced_lens_dist = ((lens_dist - f1 - f2) / lens_mount_max_screw_value - 0.5) / 2
@@ -98,6 +102,9 @@ class InterfEnv(gym.Env):
 
     def set_radius(self, value):
         self.radius = value
+
+    def set_piezo_std(self, value):
+        self.piezo_std =value
 
     def set_xmin(self, value):
         self.x_min = value
@@ -190,6 +197,7 @@ class InterfEnv(gym.Env):
     def reset(self, actions=None):
         self.n_steps = 0
         self.info = {}
+
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
@@ -435,13 +443,14 @@ class InterfEnv(gym.Env):
         # )
 
         state = self._calc_image(
-            self.x_min, self.x_max, InterfEnv.n_points,
+            self.pivot_beam_x, self.pivot_beam_y, InterfEnv.n_points,
             wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0, self.beam1_rotation,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
             use_beam_masks=self._use_beam_masks,
-            has_interf=has_interf)
+            has_interf=has_interf,
+            piezo_std=self.piezo_std)
 
         tend = tm.time()
 
