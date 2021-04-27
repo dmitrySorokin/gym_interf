@@ -67,6 +67,8 @@ class InterfEnv(gym.Env):
         self.noise_coef = 0
         self.backward_frames = 4
         self.base_r_curvature = 5039679
+        self.r_curvature_up = (self.a + self.b + self.c - self.f1 - self.f2) + self.f2 * (
+                    -1 + self.f2 * (self.base_r_curvature - self.f2) / self.f1**2)
         self.radius = 0.714
         self.max_steps = 100
 
@@ -443,7 +445,7 @@ class InterfEnv(gym.Env):
         state = self._calc_image(
             self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
             wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
-            self.beam1_rotation, self.base_r_curvature,
+            self.beam1_rotation, self.r_curvature_up,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay,
             beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb,
