@@ -66,15 +66,8 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.base_r_curvature = 766
+        self.base_r_curvature = 5039679
         self.radius = 0.714
-        self.radius_up = np.abs(
-            (self.a + self.b + self.c - self.f1 - self.f2) * self.f1**2
-            - self.f2 * (self.f1**2 + self.f1 * self.f2 - self.base_r_curvature * self.f2)
-        ) / (self.f1 * self.f2 * self.base_r_curvature) * self.radius
-
-        self.r_curvature_up = (self.a + self.b + self.c - self.f1 - self.f2) + self.f2 * (
-                    -1 + self.f2 * (self.base_r_curvature - self.f2) / (self.f1**2))
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -449,7 +442,7 @@ class InterfEnv(gym.Env):
 
         state = self._calc_image(
             self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
-            wave_vector1, center1, self.radius_up, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
             self.beam1_rotation, self.base_r_curvature,
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay,
             beam2_amplitude, self.beam2_rotation,
