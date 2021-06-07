@@ -9,7 +9,7 @@ class InterfTelescope(InterfEnv):
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float32)
 
     def step(self, actions):
-        return super().step([*actions, 0, 0])
+        return super().step([*actions, 0])
 
     def reset(self, actions=None):
         if actions is None:

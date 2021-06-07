@@ -15,7 +15,7 @@ from .exp_state_provider import ExpStateProvider
 class InterfEnv(gym.Env):
     n_points = 64
     n_frames = 16
-    n_actions = 5
+    n_actions = 6
 
     # mirror screw step l / L, (ratio of delta screw length to vertical distance)
     one_mirror_step = 0.52 * 1e-6
@@ -97,10 +97,8 @@ class InterfEnv(gym.Env):
 
         # distance between lenses
         # reduced_lens_dist = ((lens_dist - f1 - f2) / lens_mount_max_screw_value - 0.5) / 2
-        self.reduced_lens_dist = None
-
-    def set_lens_dist(self, value):
-        self.reduced_lens_dist = value
+        self.reduced_lens_dist1 = None
+        self.reduced_lens_dist2 = None
 
     def set_radius(self, value):
         self.radius = value
@@ -198,7 +196,8 @@ class InterfEnv(gym.Env):
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
-        self.reduced_lens_dist = 0
+        self.reduced_lens_dist1 = 0
+        self.reduced_lens_dist2 = 0
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
@@ -231,11 +230,17 @@ class InterfEnv(gym.Env):
         else:
             return None
 
-    def _calc_beam_propagation(self, lens_dist):
-        lens_dist = lens_dist * InterfEnv.lens_mount_max_screw_value
+    def _calc_beam_propagation(self, lens_dist1, lens_dist2):
+        print(lens_dist1, lens_dist2)
 
-        if lens_dist == 0:
-            lens_dist = 1e-6
+        lens_dist1 = lens_dist1 * InterfEnv.lens_mount_max_screw_value
+        lens_dist2 = lens_dist2 * InterfEnv.lens_mount_max_screw_value
+
+        if lens_dist1 == 0:
+            lens_dist1 = 1e-6
+
+        if lens_dist2 == 0:
+            lens_dist2 = 1e-6
 
         def free_space(length):
             return np.array([[1, length], [0, 1]])
@@ -243,8 +248,8 @@ class InterfEnv(gym.Env):
         def lens(focal_length):
             return np.array([[1, 0], [-1 / focal_length, 1]])
 
-        dist_between_lenses1 = 2 * self.f1 + lens_dist
-        dist_between_lenses2 = 2 * self.f2 + lens_dist
+        dist_between_lenses1 = 2 * self.f1 + lens_dist1
+        dist_between_lenses2 = 2 * self.f2 + lens_dist2
 
         dist_to_camera = self.c + self.a + self.b - dist_between_lenses1 - dist_between_lenses2 - self.dist_between_telescopes
         abcd_matrix = \
@@ -252,10 +257,10 @@ class InterfEnv(gym.Env):
             lens(self.f2) @ \
             free_space(dist_between_lenses2) @ \
             lens(self.f2) @ \
-            free_space(self.dist_between_telescopes) #@ \
-            #lens(self.f1) @ \
-            #free_space(dist_between_lenses1) @ \
-            #lens(self.f1)
+            free_space(self.dist_between_telescopes) @ \
+            lens(self.f1) @ \
+            free_space(dist_between_lenses1) @ \
+            lens(self.f1)
         inv_q = -1j * self.lamb / (np.pi * self.radius ** 2)
         inv_q_prime = (abcd_matrix[1][0] + abcd_matrix[1][1] * inv_q) / (abcd_matrix[0][0] + abcd_matrix[0][1] * inv_q)
 
@@ -293,7 +298,9 @@ class InterfEnv(gym.Env):
         elif action == 3:
             self.mirror2_screw_y = np.clip(self.mirror2_screw_y + normalized_step_length, -1, 1)
         elif action == 4:
-            self.reduced_lens_dist = np.clip(self.reduced_lens_dist + normalized_step_length, -1, 1)
+            self.reduced_lens_dist1 = np.clip(self.reduced_lens_dist1 + normalized_step_length, -1, 1)
+        elif action == 5:
+            self.reduced_lens_dist2 = np.clip(self.reduced_lens_dist2 + normalized_step_length, -1, 1)
         else:
             assert False, 'unknown action = {}'.format(action)
 
@@ -427,10 +434,11 @@ class InterfEnv(gym.Env):
         # band_width = min(band_width_x, band_width_y)
         # cell_size = (self.x_max - self.x_min) / InterfEnv.n_points
 
-        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lens_dist)
+        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lens_dist1, self.reduced_lens_dist2)
         beam2_amplitude = self.radius / radius_bottom
         self.info['r_curvature'] = curvature_radius
-        self.info['reduced_lens_dist'] = self.reduced_lens_dist
+        self.info['reduced_lens_dist1'] = self.reduced_lens_dist1
+        self.info['reduced_lens_dist2'] = self.reduced_lens_dist2
         self.info['radius_bottom'] = radius_bottom
 
         kvector = wave_vector2 * 2 * np.pi / self.lamb
