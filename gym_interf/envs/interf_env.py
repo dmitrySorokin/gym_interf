@@ -34,12 +34,13 @@ class InterfEnv(gym.Env):
 
     # size of interferometer (in mm)
     a = 200
-    b = 300
+    b = 500
     c = 100
 
     # focuses of lenses (in mm)
     f1 = 50
-    f2 = 50
+    f2 = 100
+    dist_between_telescopes = 100
     one_lens_step = 1.25 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
 
@@ -160,7 +161,9 @@ class InterfEnv(gym.Env):
             (ord('j'),): 6,
             (ord('l'),): 7,
             (ord('n'),): 8,
-            (ord('m'),): 9
+            (ord('m'),): 9,
+            (ord('v'),): 10,
+            (ord('b'),): 11
         }
 
     def seed(self, seed=None):
@@ -237,21 +240,28 @@ class InterfEnv(gym.Env):
         def free_space(length):
             return np.array([[1, length], [0, 1]])
 
-        def lense(focal_length):
+        def lens(focal_length):
             return np.array([[1, 0], [-1 / focal_length, 1]])
 
-        dist_between_lenses = self.f1 + self.f2 + lens_dist
-        dist_to_camera = self.c + self.a + self.b - dist_between_lenses
+        dist_between_lenses1 = 2 * self.f1 + lens_dist
+        dist_between_lenses2 = 2 * self.f2 + lens_dist
+
+        dist_to_camera = self.c + self.a + self.b - dist_between_lenses1 - dist_between_lenses2 - self.dist_between_telescopes
         abcd_matrix = \
             free_space(dist_to_camera) @ \
-            lense(self.f2) @ \
-            free_space(dist_between_lenses) @ \
-            lense(self.f1)
+            lens(self.f2) @ \
+            free_space(dist_between_lenses2) @ \
+            lens(self.f2) @ \
+            free_space(self.dist_between_telescopes) #@ \
+            #lens(self.f1) @ \
+            #free_space(dist_between_lenses1) @ \
+            #lens(self.f1)
         inv_q = -1j * self.lamb / (np.pi * self.radius ** 2)
         inv_q_prime = (abcd_matrix[1][0] + abcd_matrix[1][1] * inv_q) / (abcd_matrix[0][0] + abcd_matrix[0][1] * inv_q)
 
         curvature_radius = 1 / (np.real(inv_q_prime) + 1e-9)
         beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
+        return beam_radius, curvature_radius
 
         curvature_radius_eq = dist_to_camera - self.f2 ** 2 / lens_dist - self.f2
 
