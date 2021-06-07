@@ -231,8 +231,6 @@ class InterfEnv(gym.Env):
             return None
 
     def _calc_beam_propagation(self, lens_dist1, lens_dist2):
-        print(lens_dist1, lens_dist2)
-
         lens_dist1 = lens_dist1 * InterfEnv.lens_mount_max_screw_value
         lens_dist2 = lens_dist2 * InterfEnv.lens_mount_max_screw_value
 
