@@ -39,8 +39,8 @@ class InterfEnv(gym.Env):
 
     # focuses of lenses (in mm)
     f1 = 50
-    f2 = 100
-    dist_between_telescopes = 100
+    f2 = 50
+    dist_between_telescopes = 500
     one_lens_step = 1.25 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
 
@@ -248,14 +248,15 @@ class InterfEnv(gym.Env):
 
         dist_between_lenses1 = 2 * self.f1 + lens_dist1
         dist_between_lenses2 = 2 * self.f2 + lens_dist2
+        dist_between_tel = self.dist_between_telescopes - lens_dist1
 
-        dist_to_camera = self.c + self.a + self.b - dist_between_lenses1 - dist_between_lenses2 - self.dist_between_telescopes
+        dist_to_camera = self.c + self.a + self.b - dist_between_lenses1 - dist_between_lenses2 - dist_between_tel
         abcd_matrix = \
             free_space(dist_to_camera) @ \
             lens(self.f2) @ \
             free_space(dist_between_lenses2) @ \
             lens(self.f2) @ \
-            free_space(self.dist_between_telescopes) @ \
+            free_space(dist_between_tel) @ \
             lens(self.f1) @ \
             free_space(dist_between_lenses1) @ \
             lens(self.f1)
