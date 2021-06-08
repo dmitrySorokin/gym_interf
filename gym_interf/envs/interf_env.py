@@ -67,6 +67,7 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
+        self.piezo_std = 0
         self.radius = 0.714 
         self.max_steps = 100
 
@@ -108,6 +109,9 @@ class InterfEnv(gym.Env):
         self.x_max = (0.5 + delta_x) * InterfEnv.camera_size
         self.y_min = (-0.5 + delta_y) * InterfEnv.camera_size
         self.y_max = (0.5 + delta_y) * InterfEnv.camera_size
+
+    def set_piezo_std(self, value):
+        self.piezo_std = value
 
     def set_beam_rotation(self, value):
         self.beam1_rotation = value
@@ -193,6 +197,7 @@ class InterfEnv(gym.Env):
     def reset(self, actions=None):
         self.n_steps = 0
         self.info = {}
+
         self.beam1_mask = self._image_randomizer.get_mask()
         self.beam2_mask = self._image_randomizer.get_mask()
 
@@ -461,6 +466,7 @@ class InterfEnv(gym.Env):
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
+            piezo_std=self.piezo_std,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
 

@@ -26,13 +26,14 @@ void calcImage(
         const Vector& wave_vector2, const Vector& center2, double radius2, const double* beamImage2,
         double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,
         double r_curvature, int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
-        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, double piezoStd, int nThreads, uint8_t* image, double* totIntens)
 {
     std::random_device rnd;
     std::mt19937 generator(rnd());
     std::uniform_real_distribution<> distrib(0, noiseCoeff);
     std::uniform_real_distribution<> phaseDistrib(0, 2 * M_PI);
     std::uniform_real_distribution<> amplDistrib(0.0, 0.2);
+    std::normal_distribution<> piezoDistrib{0, piezoStd};
 
     // const double maxIntens = beam1Ampl * beam1Ampl + beam2Ampl * beam2Ampl + 2 * beam1Ampl * beam2Ampl;
     const double maxIntens = 4;
@@ -47,6 +48,10 @@ void calcImage(
 
     auto amplNoise = [&] {
         return 1.0 - amplDistrib(generator);
+    };
+
+    auto piezoNoise = [&](){
+        return piezoDistrib(generator);
     };
 
 	const double k = 2 * M_PI / lambda;
@@ -176,7 +181,7 @@ void calcImage(
 
     auto startPhase = rndPhase();
     for (int iFrame = 0; iFrame < nForwardFrames; ++iFrame) {
-        double time = startPhase + 2 * M_PI * iFrame / nForwardFrames;
+        double time = startPhase + 2 * M_PI * iFrame / nForwardFrames + piezoNoise();
         int ind = iFrame * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
@@ -186,7 +191,7 @@ void calcImage(
 
     startPhase = rndPhase();
     for (int iFrame = 0; iFrame < nBackwardFrames; ++iFrame) {
-        double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames);
+        double time = startPhase + 2 * M_PI * (1.0 - static_cast<double>(iFrame) / nBackwardFrames) + piezoNoise();
         int ind = (iFrame + nForwardFrames) * totalPoints;
         uint8_t* img = image + ind;
         imageFutures.push_back(std::async(
@@ -210,7 +215,7 @@ void calc_image(
         const double* vector2, const double*  cnt2, double radius2, const double* beamImage2,
         double length2, int nPoints2, double sigma2x, double sigma2y, double beam2Ampl, double beam2Rotation,
         double r_curvature, int nForwardFrames, int nBackwardFrames, double lambda, double omega, bool hasInterference,
-        double noiseCoeff, int nThreads, uint8_t* image, double* totIntens)
+        double noiseCoeff, double piezoStd, int nThreads, uint8_t* image, double* totIntens)
 {
 	auto wave_vector1 = Vector{vector1[0], vector1[1], vector1[2]};
 	auto wave_vector2 = Vector{vector2[0], vector2[1], vector2[2]};
@@ -222,5 +227,5 @@ void calc_image(
         wave_vector1, center1, radius1, beamImage1, length1, nPoints1, sigma1x, sigma1y, beam1Ampl, beam1Rotation,
         wave_vector2, center2, radius2, beamImage2, length2, nPoints2, sigma2x, sigma2y, beam2Ampl, beam2Rotation,
         r_curvature, nForwardFrames, nBackwardFrames, lambda, omega, hasInterference,
-        noiseCoeff, nThreads, image, totIntens);
+        noiseCoeff, piezoStd, nThreads, image, totIntens);
 }
