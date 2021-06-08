@@ -34,7 +34,7 @@ class InterfEnv(gym.Env):
 
     # size of interferometer (in mm)
     a = 200
-    b = 500
+    b = 700
     c = 100
 
     # focuses of lenses (in mm)
