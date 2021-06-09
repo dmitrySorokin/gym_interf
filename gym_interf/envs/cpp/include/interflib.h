@@ -1,4 +1,4 @@
-#pragma onces
+#pragma once
 
 #include "defines.h"
 #include <cstdint>

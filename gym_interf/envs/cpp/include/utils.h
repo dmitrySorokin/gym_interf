@@ -1,4 +1,4 @@
-#pragma onces
+#pragma once
 
 #include "types.h"
 
