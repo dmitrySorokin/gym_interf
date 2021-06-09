@@ -103,6 +103,9 @@ class InterfEnv(gym.Env):
 
     def set_radius(self, value):
         self.radius = value
+        
+    def set_max_steps(self, value):
+        self.max_steps = value
 
     def shift_camera_position(self, delta_x, delta_y):
         self.x_min = (-0.5 + delta_x) * InterfEnv.camera_size
