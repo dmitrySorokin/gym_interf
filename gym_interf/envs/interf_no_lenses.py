@@ -9,12 +9,12 @@ class InterfNoLenses(InterfEnv):
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float32)
 
     def step(self, actions):
-        return super().step([*actions, 0])
+        return super().step([*actions, 0, 0])
 
     def reset(self, actions=None):
         if actions is None:
             actions = InterfNoLenses.action_space.sample()
-        return super().reset([*actions, 0])
+        return super().reset([*actions, 0, 0])
 
     def get_keys_to_action(self):
         return {

@@ -1,5 +1,5 @@
 from gym.envs.registration import register
-from .envs import InterfEnv, InterfNoLenses
+from .envs import InterfEnv, InterfNoLenses, InterfTelescope
 
 register(id='interf-v1',
          entry_point='gym_interf.envs:InterfNoLenses')
