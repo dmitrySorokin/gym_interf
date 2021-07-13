@@ -33,7 +33,7 @@ class InterfEnv(gym.Env):
     omega = 1
 
     dist_between_telescopes = 500
-    one_lens_step = 1.25 * 1e-3
+    one_lens_step = 0.7 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
 
     # initial normals
@@ -73,7 +73,7 @@ class InterfEnv(gym.Env):
         self.angle = None
         self.noise_coef = 0
         self.backward_frames = 4
-        self.piezo_std = 0
+        self.phase_std = 0
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -118,8 +118,8 @@ class InterfEnv(gym.Env):
         self.y_min = (-0.5 + delta_y) * InterfEnv.camera_size
         self.y_max = (0.5 + delta_y) * InterfEnv.camera_size
 
-    def set_piezo_std(self, value):
-        self.piezo_std = value
+    def set_phase_std(self, value):
+        self.phase_std = value
 
     def set_beam_rotation(self, value):
         self.beam1_rotation = value
@@ -242,6 +242,38 @@ class InterfEnv(gym.Env):
             plt.show()
         else:
             return None
+
+    def get_approx_visib(self):
+
+        center1, wave_vector1, center2, wave_vector2, self.angle = self._calc_centers_and_wave_vectors()
+        proj_1, proj_2, _ = self._calc_projection_distance(center1, wave_vector1, center2, wave_vector2)
+
+        radius_bottom, curvature_radius = self._calc_beam_propagation(self.reduced_lens_dist1, self.reduced_lens_dist2)
+        beam2_amplitude = self.radius / radius_bottom
+
+        has_interf = True  # band_width > 4 * cell_size
+
+        pixel_size = (self.y_max - self.y_min) / InterfEnv.n_points
+
+        _, tot_intens = self._calc_image(
+            self.x_min, self.y_min, InterfEnv.n_points, InterfEnv.n_points, pixel_size,
+            wave_vector1, center1, self.radius, self.beam1_mask, 3.57, 4*64, self.beam1_sigmax, self.beam1_sigmay, 1.0,
+            self.beam1_rotation,
+            wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 4*64, self.beam2_sigmax, self.beam2_sigmay,
+            beam2_amplitude, self.beam2_rotation,
+            curvature_radius, 10*(InterfEnv.n_frames - self.backward_frames), 10*self.backward_frames, InterfEnv.lamb,
+            InterfEnv.omega,
+            noise_coef=self.noise_coef,
+            ampl_std=0,
+            phase_std=self.phase_std,
+            use_beam_masks=self._use_beam_masks,
+            has_interf=has_interf)
+
+        def visib(vmin, vmax):
+            return (vmax - vmin) / (vmax + vmin)
+
+        return visib(float(min(tot_intens)), float(max(tot_intens)))
+
 
     def _calc_beam_propagation(self, lens_dist1, lens_dist2):
         lens_dist1 = lens_dist1 * InterfEnv.lens_mount_max_screw_value
@@ -462,7 +494,8 @@ class InterfEnv(gym.Env):
             wave_vector2, center2, radius_bottom, self.beam2_mask, 3.57, 64, self.beam2_sigmax, self.beam2_sigmay, beam2_amplitude, self.beam2_rotation,
             curvature_radius, InterfEnv.n_frames - self.backward_frames, self.backward_frames, InterfEnv.lamb, InterfEnv.omega,
             noise_coef=self.noise_coef,
-            piezo_std=self.piezo_std,
+            ampl_std=0.2,
+            phase_std=self.phase_std,
             use_beam_masks=self._use_beam_masks,
             has_interf=has_interf)
 
