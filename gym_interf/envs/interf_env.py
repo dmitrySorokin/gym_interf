@@ -7,7 +7,7 @@ import time as tm
 from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
-from .utils import reflect, project, rotate_x, dist, angle_between, visibility
+from .utils import reflect, project, rotate_x, dist, angle_between, visibility_two_telescopes
 from .domain_randomizer import DomainRandomizer
 from .exp_state_provider import ExpStateProvider
 
@@ -32,14 +32,6 @@ class InterfEnv(gym.Env):
     lamb = 6.35 * 1e-4
     omega = 1
 
-    # size of interferometer (in mm)
-    a = 200
-    b = 700
-    c = 100
-
-    # focuses of lenses (in mm)
-    f1 = 50
-    f2 = 50
     dist_between_telescopes = 500
     one_lens_step = 1.25 * 1e-3
     lens_mount_max_screw_value = 6000 * one_lens_step
@@ -53,7 +45,21 @@ class InterfEnv(gym.Env):
 
     done_visibility = 0.9999
 
-    def __init__(self):
+    def __init__(self, a=200, b=700, c=100, f1=50, f2=50, beam_radius=0.714):
+        # size of interferometer (in mm)
+        self.a = a
+        self.b = b
+        self.c = c
+
+        # focuses of lenses (in mm) of first telescope
+        self.f1 = f1
+        # focuses of lenses (in mm) of second telescope
+        self.f2 = f2
+
+        self.radius = beam_radius
+
+        self._visibility = visibility_two_telescopes
+
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
         self.mirror2_screw_x = 0
@@ -68,7 +74,6 @@ class InterfEnv(gym.Env):
         self.noise_coef = 0
         self.backward_frames = 4
         self.piezo_std = 0
-        self.radius = 0.714 
         self.max_steps = 100
 
         self.beam1_mask = None
@@ -275,18 +280,6 @@ class InterfEnv(gym.Env):
         beam_radius = np.sqrt(-self.lamb / np.imag(inv_q_prime) / np.pi)
         return beam_radius, curvature_radius
 
-        curvature_radius_eq = dist_to_camera - self.f2 ** 2 / lens_dist - self.f2
-
-        beam_radius_eq = np.abs(
-            lens_dist *
-            (dist_to_camera / (self.f1 * self.f2) - 1.0 / self.f1)
-            - self.f2 / self.f1
-        ) * self.radius
-
-        # TODO explain difference between
-        #  beam_radius / beam_radius_eq and curvature_radius / curvature_radius_eq
-        return beam_radius_eq, curvature_radius_eq
-
     def _take_action(self, action, normalized_step_length):
         """
         0 - do nothing
@@ -343,18 +336,18 @@ class InterfEnv(gym.Env):
         self.info['mirror2_normal'] = mirror2_normal
 
         wave_vector1 = np.array([0, 0, 1], dtype=np.float64)
-        center1 = np.array([0, 0, -InterfEnv.c], dtype=np.float64)
+        center1 = np.array([0, 0, -self.c], dtype=np.float64)
 
-        center2 = np.array([0, -InterfEnv.a, -(InterfEnv.b + InterfEnv.c)], dtype=np.float64)
+        center2 = np.array([0, -self.a, -(self.b + self.c)], dtype=np.float64)
         wave_vector2 = np.array([0, 0, 1], dtype=np.float64)
 
         # reflect wave vector by first mirror
-        center2 = project(center2, wave_vector2, mirror1_normal, np.array([0, -InterfEnv.a, -InterfEnv.c]))
+        center2 = project(center2, wave_vector2, mirror1_normal, np.array([0, -self.a, -self.c]))
         wave_vector2 = reflect(wave_vector2, mirror1_normal)
         self.info['reflect_with_mirror1'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
         # reflect wave vector by second mirror
-        center2 = project(center2, wave_vector2, mirror2_normal, np.array([0, 0, -InterfEnv.c]))
+        center2 = project(center2, wave_vector2, mirror2_normal, np.array([0, 0, -self.c]))
         wave_vector2 = reflect(wave_vector2, mirror2_normal)
         self.info['reflect_with_mirror2'] = 'center = {}, k = {}'.format(center2, wave_vector2)
 
@@ -449,7 +442,7 @@ class InterfEnv(gym.Env):
         self.info['radius_bottom'] = radius_bottom
 
         kvector = wave_vector2 * 2 * np.pi / self.lamb
-        self.info['visib_device'] = visibility(
+        self.info['visib_device'] = self._visibility(
             self.radius, radius_bottom, curvature_radius,
             proj_2[0], proj_2[1], kvector[0], kvector[1], self.lamb)
 

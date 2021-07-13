@@ -146,6 +146,7 @@ def dist(a, b):
 
 
 def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
+    # works for interf without lenses and for interf with one telescope
     n = radius_bottom / radius_top
     n2 = n * n
     r2 = radius_top ** 2
@@ -167,3 +168,8 @@ def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
     )
 
     return 4 / ((n2 + 1) * r2 * np.sqrt(c2)) * exp1 * exp2 * exp3
+
+
+def visibility_two_telescopes(*args, **kwargs):
+    # not derived
+    return -1

@@ -2,11 +2,16 @@ import gym
 import numpy as np
 
 from .interf_env import InterfEnv
+from .utils import visibility
 
 
 class InterfNoLenses(InterfEnv):
     n_actions = 4
     action_space = gym.spaces.Box(low=-1, high=1, shape=(n_actions,), dtype=np.float32)
+
+    def __init__(self):
+        super().__init__(a=200, b=300, c=100, beam_radius=0.957)
+        self._visibility = visibility
 
     def step(self, actions):
         return super().step([*actions, 0, 0])
@@ -27,3 +32,6 @@ class InterfNoLenses(InterfEnv):
             (ord('j'),): 6,
             (ord('l'),): 7,
         }
+
+    def _calc_beam_propagation(self, lens_dist1, lens_dist2):
+        return self.radius, np.inf
