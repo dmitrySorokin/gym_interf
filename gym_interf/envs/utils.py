@@ -183,19 +183,14 @@ def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
 
 def visibility_two_telescopes(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
     r_curvature = np.abs(r_curvature)
-    fact = 8 * (((2 * np.pi * radius_bottom ** 2 * radius_top ** 2) ** 2 + (
-            2 * r_curvature * (radius_top ** 2 + radius_bottom ** 2)) ** 2) ** (-1 / 2) *
-                radius_bottom ** 2 * radius_top ** 2 * r_curvature / (radius_top ** 2 + radius_bottom ** 2)
-                )
-    num = -((r_curvature * radius_top ** 2 * radius_bottom ** 2 * (kx ** 2 + ky ** 2) + 4 * r_curvature * (
-            x ** 2 + y ** 2)
-             - 4 * np.pi / lamb * radius_bottom ** 2 * radius_top ** 2 * (kx * x + ky * y)) * (
-                    radius_top ** 2 + radius_bottom ** 2) * 2 * r_curvature -
-            2 * np.pi * radius_top ** 2 * radius_bottom ** 2 * (
-                    4 * radius_bottom ** 2 * r_curvature * (x * kx + y * ky) +
-                    4 * np.pi / lamb * (x ** 2 + y ** 2) * (radius_top ** 2 - 2 * radius_bottom ** 2))
-            ) / 2
+    num = -(radius_top ** 2 * radius_bottom ** 2 * r_curvature ** 2 * (radius_top ** 2 + radius_bottom ** 2) * (kx ** 2 + ky ** 2)
+            - 4 * np.pi / lamb * radius_top ** 4 * radius_bottom ** 2 * (kx * x + ky * y) * r_curvature  +
+            ((2 * np.pi * radius_top ** 2 * radius_bottom) ** 2 + 4 * r_curvature ** 2 * (radius_bottom ** 2 + radius_top ** 2) * (x ** 2 + y ** 2))
+
+
+    )
     denom = (2 * np.pi / lamb * radius_bottom ** 2 * radius_top ** 2) ** 2 + (
             2 * r_curvature * (radius_top ** 2 + radius_bottom ** 2)) ** 2
 
+    fact = 8 *  radius_top ** 2 * radius_bottom ** 2 * r_curvature / (denom ** (1 / 2) * (radius_top ** 2 + radius_bottom ** 2))
     return fact * np.exp(num / denom)
