@@ -2,7 +2,7 @@ import gym
 import numpy as np
 
 from .interf_env import InterfEnv
-from .utils import visibility
+from .utils import visibility_for_telescopes
 
 
 class InterfTelescope(InterfEnv):
@@ -11,7 +11,7 @@ class InterfTelescope(InterfEnv):
 
     def __init__(self):
         super().__init__(a=200, b=300, c=100, beam_radius=0.714)
-        self._visibility = visibility
+        self._visibility = visibility_for_telescopes
 
     def step(self, actions):
         return super().step([*actions, 0])

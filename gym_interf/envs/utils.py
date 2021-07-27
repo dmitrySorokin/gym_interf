@@ -145,8 +145,32 @@ def dist(a, b):
     return np.linalg.norm(a - b)
 
 
-
 def visibility(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
+    # works for interf without lenses and for interf with one telescope
+    n = radius_bottom / radius_top
+    n2 = n * n
+    r2 = radius_top ** 2
+    c2 = ((n2 + 1) / (n2 * r2)) ** 2 + (np.pi / (lamb * r_curvature)) ** 2
+
+    exp1 = np.exp(
+        -(x ** 2 + y ** 2) *
+        (1 / (r2 * n2) - (n2 + 1) / (n2 ** 3 * r2 ** 3 * c2))
+    )
+
+    exp2 = np.exp(
+        -(kx ** 2 + ky ** 2) *
+        (n2 + 1) / (4 * c2 * n2 * r2)
+    )
+
+    exp3 = np.exp(
+        (x * kx + y * ky) *
+        np.pi / (lamb * r_curvature * n2 * r2 * c2)
+    )
+
+    return 4 / ((n2 + 1) * r2 * np.sqrt(c2)) * exp1 * exp2 * exp3
+
+
+def visibility_for_telescopes(radius_top, radius_bottom, r_curvature, x, y, kx, ky, lamb):
     r_curvature = np.abs(r_curvature)
     num = -(radius_top ** 2 * radius_bottom ** 2 * r_curvature ** 2 * (radius_top ** 2 + radius_bottom ** 2) * (kx ** 2 + ky ** 2)
             - 4 * np.pi / lamb * radius_top ** 2 * radius_bottom ** 4 * (kx * x + ky * y) * r_curvature  +

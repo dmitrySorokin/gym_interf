@@ -7,7 +7,7 @@ import time as tm
 from scipy import optimize
 
 from .calc_image_cpp import calc_image as calc_image_cpp
-from .utils import reflect, project, rotate_x, dist, angle_between, visibility
+from .utils import reflect, project, rotate_x, dist, angle_between, visibility_for_telescopes
 from .domain_randomizer import DomainRandomizer
 from .exp_state_provider import ExpStateProvider
 
@@ -58,7 +58,7 @@ class InterfEnv(gym.Env):
 
         self.radius = beam_radius
 
-        self._visibility = visibility
+        self._visibility = visibility_for_telescopes
 
         self.mirror1_screw_x = 0
         self.mirror1_screw_y = 0
