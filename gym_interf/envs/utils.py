@@ -174,7 +174,7 @@ def visibility_for_telescopes(radius_top, radius_bottom, r_curvature, x, y, kx, 
     r_curvature = np.abs(r_curvature)
     num = -(radius_top ** 2 * radius_bottom ** 2 * r_curvature ** 2 * (radius_top ** 2 + radius_bottom ** 2) * (kx ** 2 + ky ** 2)
             - 4 * np.pi / lamb * radius_top ** 2 * radius_bottom ** 4 * (kx * x + ky * y) * r_curvature  +
-            ((2 * np.pi * radius_top ** 1 * radius_bottom ** 2) ** 2 + 4 * r_curvature ** 2 * (radius_bottom ** 2 + radius_top ** 2) * (x ** 2 + y ** 2))
+            ((2 * np.pi * radius_top ** 1 * radius_bottom ** 2) ** 2 + 4 * r_curvature ** 2 * (radius_bottom ** 2 + radius_top ** 2)) * (x ** 2 + y ** 2)
 
 
     )
